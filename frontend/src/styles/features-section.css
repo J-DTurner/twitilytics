@@ -1,0 +1,204 @@
+/* C:\Users\Administrator\Documents\twitilytics\frontend\src\styles\features-section.css */
+
+/* Base styling for the features section container */
+.features-section {
+  background: linear-gradient(180deg, var(--light) 0%, var(--background) 100%);
+  padding: calc(var(--space-xxxl) * 1.2) var(--space-xl); /* Enhanced padding from modern design */
+}
+
+/* Layout for the split view (visual panel and list of features) */
+.feature-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xxl);
+  align-items: stretch; /* Ensures columns stretch to the height of the tallest one */
+  margin-top: var(--space-xxl);
+}
+
+/* Styling for the visual panel (image/illustration) */
+.feature-visual {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 9/16; /* Default aspect ratio */
+  background: linear-gradient(135deg, var(--primary-lighter) 0%, var(--primary-light) 100%);
+  border-radius: var(--border-radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-xl);
+  transition: transform var(--transition-normal);
+  align-self: stretch; /* Stretches with the grid row */
+  min-height: 320px; /* Minimum height */
+}
+
+.feature-visual:hover {
+  transform: scale(1.02);
+}
+
+.feature-visual img,
+.feature-visual video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+
+.feature-visual:hover img,
+.feature-visual:hover video {
+  transform: scale(1.05);
+}
+
+/* Wrapper for the scrollable list of features */
+.feature-list-wrapper {
+  overflow-y: auto;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-lg) var(--space-md) var(--space-lg) 0;
+  margin-right: calc(var(--space-md) * -1); /* For scrollbar visual effect if needed */
+  
+  /* Custom Scrollbar Styles for Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-light) var(--secondary-lighter);
+}
+
+/* Custom Scrollbar Styles for Webkit browsers (Chrome, Safari, Edge) */
+.feature-list-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.feature-list-wrapper::-webkit-scrollbar-track {
+  background: var(--secondary-lighter);
+  border-radius: var(--border-radius-sm);
+}
+
+.feature-list-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--primary-light);
+  border-radius: var(--border-radius-sm);
+  border: 2px solid var(--secondary-lighter);
+  background-clip: padding-box; /* Important for border effect */
+}
+
+.feature-list-wrapper::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary);
+}
+
+/* Inner container for the feature entries, allowing them to stack vertically */
+.feature-track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Styling for an individual feature entry in the list */
+.feature-entry {
+  background: var(--light);
+  padding: var(--space-xl);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  border: 1px solid var(--secondary-lighter);
+  display: flex;
+  gap: var(--space-xl);
+  align-items: flex-start;
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0; /* Initial state for animation */
+  position: relative;
+  overflow: visible; /* In case of pseudo-elements or absolute children extending */
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feature-entry:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-light);
+}
+
+/* Icon container for each feature */
+.feature-icon {
+  background: var(--primary-lighter);
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: var(--border-radius-lg); /* Rounded square */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-normal);
+  position: relative;
+  margin-top: var(--space-xs); /* Small top margin for alignment */
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Inner part of the icon, useful if icon is not a direct SVG child */
+.feature-icon-inner {
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
+}
+
+.feature-icon-inner svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+}
+
+.feature-entry:hover .feature-icon {
+  background: var(--primary);
+}
+
+.feature-entry:hover .feature-icon-inner {
+  color: var(--light);
+}
+
+/* Text content (title and description) of a feature */
+.feature-content {
+  flex: 1; /* Takes up remaining space */
+}
+
+.feature-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-sm);
+  color: var(--dark);
+  line-height: var(--line-height-tight);
+}
+
+.feature-description {
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-relaxed);
+  color: var(--secondary-dark);
+}
+
+/* Responsive adjustments for the features section */
+@media (max-width: var(--bp-md)) { /* --bp-md is 768px */
+  .feature-split {
+    grid-template-columns: 1fr; /* Stack columns on smaller screens */
+  }
+
+  .feature-visual {
+    margin-bottom: var(--space-xl);
+    aspect-ratio: 16/9; /* Adjust aspect ratio for stacked layout */
+  }
+
+  .feature-list-wrapper {
+    overflow-y: visible; /* Disable scrolling for stacked layout */
+    height: auto; /* Let content define height */
+    min-height: 0; /* Reset min-height */
+    padding-right: 0; /* No scrollbar, so no padding needed */
+    margin-right: 0; /* Reset margin */
+  }
+}

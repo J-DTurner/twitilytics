@@ -1,0 +1,100 @@
+/* Problem Section Styles */
+.problem-section {
+  background-color: var(--background);
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xxl);
+  align-items: center;
+}
+
+.problem-image {
+  width: 100%;
+  height: auto;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+}
+
+.problem-text h2 { /* This rule targets an h2 within .problem-text. If .problem-text itself has specific styles, move them too. */
+  font-size: var(--font-size-4xl);
+  margin-bottom: var(--space-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.problem-point {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--space-lg);
+  /* Added from enhanced styles */
+  transition: all var(--transition-fast);
+  padding: var(--space-md);
+  border-radius: var(--border-radius);
+}
+
+.problem-point:hover {
+  background: var(--primary-lighter);
+  transform: translateX(10px);
+}
+
+.problem-icon-wrapper { /* This is the new wrapper for the icon */
+  background-color: var(--error-lighter);
+  width: 48px;
+  height: 48px;
+  min-width: 48px; /* ensure size */
+  border-radius: var(--border-radius-lg); /* Rounded square */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--space-lg);
+  color: var(--error);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+.problem-icon-wrapper svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+}
+.problem-point:hover .problem-icon-wrapper {
+  background-color: var(--error);
+  color: var(--light);
+}
+
+.problem-section .problem-icon { /* This rule might be redundant if SVG is directly in wrapper now. Keep if .problem-icon class is still used. */
+    margin-right: 0; /* Reset margin if it was on the SVG */
+}
+
+/* Enhanced Problem Section (from modern design improvements in landing-page.css) */
+.problem-section {
+  background: linear-gradient(180deg, var(--light) 0%, var(--background) 100%);
+}
+
+/* This rule for .problem-icon was separate, ensure its context or integrate with .problem-icon-wrapper if it's the same element */
+.problem-icon { 
+  background: var(--error-lighter); /* This might conflict if problem-icon-wrapper is used instead */
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--border-radius-full); /* This was full, wrapper is lg */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--space-lg);
+  transition: all var(--transition-fast);
+}
+
+.problem-point:hover .problem-icon { /* This implies .problem-icon is a child of .problem-point */
+  transform: rotate(180deg);
+  background: var(--error-light); /* This was error-light, wrapper hover is error */
+}
+
+/* Responsive adjustments for Problem Section */
+@media (max-width: 768px) { /* From general responsive styles in landing-page.css */
+  .problem-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-xl);
+  }
+}

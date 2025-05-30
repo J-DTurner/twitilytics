@@ -1,0 +1,98 @@
+/* C:\Users\Administrator\Documents\twitilytics\frontend\src\styles\solution-section.css */
+
+/* Solution Section Styles */
+.solution-section {
+  background: linear-gradient(135deg, #0a4d7a 0%, #1a7ab8 100%);
+  color: var(--light);
+  border-radius: 0;
+  padding: var(--space-xxl) var(--space-xl);
+  margin-top: var(--space-xxl);
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow-xl);
+}
+
+.solution-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.solution-section .section-header {
+  margin-bottom: var(--space-xl);
+  position: relative;
+  z-index: 1;
+}
+
+
+
+.solution-section .section-header .section-title,
+.solution-section .section-header .section-subtitle {
+  color: var(--light);
+}
+
+.solution-content {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* Note: .solution-image is defined but not used in SolutionSection.jsx. Included for completeness. */
+.solution-image {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  margin: var(--space-xl) auto;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+}
+
+/* Enhanced Solution Section Benefits */
+.solution-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xl);
+  margin-top: var(--space-xxl);
+  margin-bottom: var(--space-xl);
+  position: relative;
+  z-index: 1;
+}
+
+
+/* Styles for .btn-primary specifically within .solution-section.
+   Note: SolutionSection.jsx currently uses .btn-accent.
+   These styles will apply if a .btn-primary is used in .solution-section. */
+.solution-section .btn-primary {
+  background-color: var(--accent);
+  color: var(--dark);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.solution-section .btn-primary:hover {
+  background-color: #ffcc29; /* This is a specific yellow, not var(--accent-dark) */
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Responsive Styles for Solution Section Benefits */
+@media (max-width: 1024px) {
+  .solution-benefits {
+    grid-template-columns: repeat(2, 1fr) !important; /* 2 columns on tablets */
+  }
+}
+
+@media (max-width: 768px) {
+  .solution-benefits {
+    grid-template-columns: 1fr !important; /* 1 column on mobile */
+    gap: 2rem !important;
+  }
+}

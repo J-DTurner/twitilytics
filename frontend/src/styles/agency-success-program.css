@@ -1,0 +1,85 @@
+/* C:\Users\Administrator\Documents\twitilytics\frontend\src\styles\agency-success-program.css */
+
+/* Agency Success Program Styles */
+.agency-program {
+  background: linear-gradient(135deg, #0a4d7a 0%, #1a7ab8 100%);
+  color: var(--light);
+  border-radius: 0; /* Overrides any global .section radius if applicable */
+  padding: var(--space-xxl) var(--space-xl);
+  margin-top: var(--space-xxl); /* Provides top margin for the section */
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow-xl);
+}
+
+.agency-program::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.agency-benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xl);
+  max-width: 800px; 
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: var(--space-xl);
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 1024px) {
+  .agency-benefits-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .agency-benefits-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+
+/* Styles specific to .agency-program when .agency-program-dark-theme is applied */
+/* Note: .agency-program itself provides the background gradient and base text color. */
+/* .agency-program-dark-theme specific overrides and child styling: */
+
+.agency-program .section-header .section-title,
+.agency-program .section-header .section-subtitle {
+  color: var(--light);
+}
+
+
+
+/* Button and Form Styles within the Dark Theme */
+.agency-program .btn-accent { /* For "Join Waitlist" buttons */
+  background-color: var(--accent);
+  color: var(--light); /* Ensures light text on accent background for this theme */
+}
+
+.agency-program .btn-accent:hover,
+.agency-program .btn-accent:focus {
+  background-color: var(--accent-dark);
+  transform: translateY(-2px); /* Added line */
+  box-shadow: var(--shadow-md); /* Added line */
+  text-decoration: underline; /* Added line */
+}
+
+.agency-program .btn-ghost { /* For "Cancel" button */
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.agency-program .btn-ghost:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--light);
+}
+

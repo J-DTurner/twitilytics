@@ -1,0 +1,77 @@
+/* C:\Users\Administrator\Documents\twitilytics\frontend\src\styles\shared\shared-benefit-card.css */
+
+.shared-benefit-card {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--light);
+  padding: var(--space-xl);
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-normal);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%; /* Ensures cards in a row have the same height */
+  backdrop-filter: blur(10px);
+}
+
+.shared-benefit-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border-color: var(--accent-light);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.shared-benefit-card__icon {
+  background-color: rgba(255, 255, 255, 0.1);
+  width: 64px;
+  height: 64px;
+  border-radius: var(--border-radius-lg); /* Rounded square */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-lg);
+  color: var(--accent); /* SVG will inherit this if 'stroke: currentColor' */
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.shared-benefit-card:hover .shared-benefit-card__icon {
+  background-color: var(--accent);
+  color: var(--light); /* SVG will inherit this on hover */
+}
+
+.shared-benefit-card__icon svg {
+  width: 32px;
+  height: 32px;
+  stroke: currentColor; /* Inherits color from .shared-benefit-card__icon */
+}
+
+/* For image icons if used, though current examples are SVG */
+.shared-benefit-card__icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: brightness(0) invert(1); /* Makes png/jpg icons white if base is dark */
+}
+
+.shared-benefit-card:hover .shared-benefit-card__icon img {
+  filter: brightness(0) invert(1); /* Keep white on hover if image icon */
+}
+
+.shared-benefit-card__title {
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-bold);
+  color: var(--light);
+  margin-bottom: var(--space-md);
+  min-height: 2.4em; /* For alignment */
+  line-height: var(--line-height-tight);
+}
+
+.shared-benefit-card__description {
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 0; /* Rely on card padding */
+  flex-grow: 1;
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-relaxed);
+}

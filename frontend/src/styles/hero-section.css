@@ -1,0 +1,264 @@
+/* Hero Section Styles */
+.hero-section {
+  background: linear-gradient(135deg, var(--primary-darker) 0%, var(--primary) 70%, var(--primary-light) 100%); /* Richer gradient */
+  color: var(--light);
+  padding: var(--space-xxxl) var(--space-xl);
+  min-height: 80vh; /* Ensure it takes up significant screen space */
+  display: flex;
+  align-items: center; /* Vertically center content */
+  position: relative;
+  overflow: hidden; /* Important for ::before/::after pseudo-elements and bg-shapes */
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2; /* Above background shapes */
+  max-width: var(--container-width); /* Use defined container width */
+  margin: 0 auto;
+  display: flex; /* Enable flex for side-by-side layout on larger screens */
+  align-items: center;
+  gap: var(--space-xxl); /* Gap between text and image */
+  width: 100%;
+}
+
+.hero-text-content {
+  flex: 1 1 55%; /* Allow text content to take more space initially */
+  text-align: left; /* Align text to the left */
+  animation: slideInFromLeft 0.8s ease-out forwards;
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.hero-header {
+  text-align: left; /* Override general section-header center alignment */
+  margin-bottom: var(--space-xl);
+  align-items: flex-start; /* Align items to the start for left-align */
+}
+
+.hero-title {
+  font-size: clamp(var(--font-size-4xl), 6vw, var(--font-size-6xl)); /* Responsive font size */
+  font-weight: var(--font-weight-extrabold);
+  line-height: 1.1; /* Tighter line height for large titles */
+  margin-bottom: var(--space-lg);
+  color: var(--light); /* Ensure high contrast */
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Subtle text shadow for depth */
+}
+
+.hero-subtitle {
+  font-size: clamp(var(--font-size-lg), 2.5vw, var(--font-size-xxl)); /* Responsive font size */
+  margin-bottom: var(--space-xl);
+  opacity: 0.9;
+  line-height: var(--line-height-relaxed);
+  max-width: 600px; /* Constrain line length for readability */
+  color: var(--primary-lighter); /* Slightly lighter for subtitle */
+}
+
+.hero-buttons {
+  display: flex;
+  justify-content: flex-start; /* Align buttons to the left */
+  gap: var(--space-lg); /* Increased gap */
+  margin-top: var(--space-xl);
+}
+
+/* Style hero buttons specifically if needed, or rely on general .btn styles */
+.hero-buttons .btn-primary {
+  /* Example: Make primary button slightly larger or with more emphasis */
+  padding: var(--space-md) var(--space-xl);
+  font-size: var(--font-size-lg);
+  box-shadow: var(--shadow-md);
+}
+.hero-buttons .btn-primary:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.hero-buttons .btn-accent {
+  padding: var(--space-md) var(--space-xl);
+  font-size: var(--font-size-lg);
+  background-color: var(--accent); /* Ensure accent color pops */
+  box-shadow: var(--shadow-md);
+}
+.hero-buttons .btn-accent:hover {
+  background-color: var(--accent-dark);
+  box-shadow: var(--shadow-lg);
+}
+
+
+.hero-image {
+  flex: 1 1 40%; /* Image takes up less space initially */
+  max-width: 550px; /* Max width for the image */
+  height: auto;
+  border-radius: var(--border-radius-lg); /* Softer radius */
+  box-shadow: 0 15px 35px rgba(0,0,0,0.3), 0 5px 15px rgba(0,0,0,0.2); /* More pronounced shadow */
+  object-fit: cover; /* Ensure image covers its container */
+  transform: perspective(1000px) rotateY(-5deg) rotateX(2deg) scale(1.05); /* Subtle 3D effect */
+  transition: transform 0.5s ease-out, box-shadow 0.5s ease-out;
+  animation: fadeInFromRight 0.8s 0.2s ease-out forwards; /* Delayed animation */
+  opacity: 0; /* Start hidden for animation */
+}
+
+@keyframes fadeInFromRight {
+  from {
+    opacity: 0;
+    transform: perspective(1000px) rotateY(-15deg) rotateX(5deg) scale(1) translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1000px) rotateY(-5deg) rotateX(2deg) scale(1.05) translateX(0);
+  }
+}
+
+.hero-image:hover {
+  transform: perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.1); /* More interactive hover */
+  box-shadow: 0 20px 45px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.25);
+}
+
+/* Background Shapes */
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Contain shapes */
+  z-index: 1; /* Behind hero-content */
+}
+
+.bg-shape {
+  position: absolute;
+  border-radius: 50%; /* Make them circular or blob-like */
+  opacity: 0.1; /* Subtle opacity */
+  filter: blur(50px); /* Soften edges */
+  animation: float 15s infinite ease-in-out alternate;
+}
+
+.bg-shape-1 {
+  width: 400px;
+  height: 400px;
+  background: var(--accent-light); /* Use accent for contrast */
+  top: -10%;
+  left: -5%;
+  animation-duration: 12s;
+}
+
+.bg-shape-2 {
+  width: 300px;
+  height: 300px;
+  background: var(--primary-lighter);
+  bottom: -15%;
+  right: -10%;
+  animation-duration: 18s;
+  animation-delay: -5s; /* Stagger animation */
+}
+
+.bg-shape-3 {
+  width: 250px;
+  height: 250px;
+  background: var(--light); /* White shape */
+  top: 20%;
+  right: 5%;
+  opacity: 0.05;
+  animation-duration: 15s;
+  animation-delay: -2s;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) translateX(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) translateX(15px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px) scale(1);
+  }
+}
+
+
+/* Responsive adjustments for Hero Section */
+@media (max-width: 992px) { /* Adjusted breakpoint for better tablet layout */
+  .hero-content {
+    flex-direction: column; /* Stack text and image */
+    text-align: center; /* Center content when stacked */
+  }
+
+  .hero-text-content {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    animation: none; /* Disable slide-in for stacked layout or use a different one */
+    opacity: 1; transform: none;
+  }
+
+  .hero-header {
+    text-align: center;
+    align-items: center;
+  }
+  
+  .hero-subtitle {
+    text-align: center; /* Explicitly center the text within the subtitle */
+    margin-left: auto; /* Center the block if max-width is less than container */
+    margin-right: auto; /* Center the block if max-width is less than container */
+  }
+  
+  .hero-buttons {
+    justify-content: center; /* Center buttons when stacked */
+  }
+
+  .hero-image {
+    max-width: 80%; /* Image can be wider when stacked */
+    margin: 0 auto; /* Center image */
+    transform: perspective(800px) rotateY(0deg) rotateX(0deg) scale(1); /* Reset transform for stacked */
+    animation: fadeIn 1s ease-out forwards; /* Simpler fade-in */
+  }
+  .hero-image:hover {
+    transform: scale(1.05);
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* This media query block from landing-page.css contains hero-specific styles */
+@media (max-width: 768px) {
+  .hero-section {
+    padding: var(--space-xxl) var(--space-lg); /* Adjust padding for smaller screens */
+    min-height: 70vh;
+  }
+
+  .hero-subtitle {
+    /* Font size already clamped */
+    max-width: 100%; /* Allow full width on smaller screens */
+  }
+  
+  .hero-buttons {
+    flex-direction: column; /* Stack buttons on very small screens */
+    align-items: center;
+  }
+  .hero-buttons .btn { /* This is specific to hero-buttons context */
+    width: 100%;
+    max-width: 300px; /* Max width for stacked buttons */
+  }
+  .bg-shape-1 { width: 300px; height: 300px; }
+  .bg-shape-2 { width: 200px; height: 200px; }
+  .bg-shape-3 { width: 150px; height: 150px; }
+}
+
+/* This media query block from landing-page.css contains hero-specific styles */
+@media (max-width: 480px) {
+  .hero-section {
+    min-height: auto; /* Allow content to dictate height */
+    padding-bottom: var(--space-xxxl); /* Ensure space at bottom */
+  }
+  .hero-image {
+    max-width: 95%; /* Almost full width */
+  }
+}

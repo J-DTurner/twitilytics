@@ -1,0 +1,96 @@
+/* C:\Users\Administrator\Documents\twitilytics\frontend\src\styles\faq-section.css */
+
+/* FAQ Section Styles */
+.faq-section {
+  background-color: var(--background);
+  padding: var(--space-xxxl) var(--space-xl);
+}
+
+.faq-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  margin-bottom: var(--space-lg);
+  background: var(--light);
+  border-radius: var(--border-radius-lg);
+  padding: 0;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  border: 1px solid transparent;
+}
+
+.faq-item:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-lighter);
+}
+
+.faq-question {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: var(--space-lg) var(--space-xl);
+  margin: 0;
+  transition: color var(--transition-fast);
+}
+
+.faq-question:hover {
+  color: var(--primary);
+}
+
+.faq-toggle {
+  background: var(--primary-lighter);
+  border: none;
+  color: var(--primary);
+  font-size: var(--font-size-xl);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-full);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  margin-left: var(--space-md);
+}
+
+.faq-toggle:hover {
+  background: var(--primary);
+  color: var(--light);
+  transform: scale(1.1);
+}
+
+.faq-answer {
+  padding: 0 var(--space-xl) var(--space-lg);
+  animation: fadeIn var(--transition-normal) ease-out;
+}
+
+.faq-answer p {
+  margin-bottom: var(--space-md);
+  line-height: var(--line-height-relaxed);
+}
+
+.faq-answer ol, .faq-answer ul {
+  margin: var(--space-md) 0;
+  padding-left: var(--space-lg);
+}
+
+.faq-answer li {
+  margin-bottom: var(--space-sm);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

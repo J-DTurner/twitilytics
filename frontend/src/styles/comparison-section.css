@@ -1,0 +1,223 @@
+/* C:\Users\Administrator\Documents\twitilytics\frontend\src\styles\comparison-section.css */
+
+.comparison-section {
+  background-color: var(--light); /* Uses a white background */
+  position: relative;
+  padding-top: var(--space-xxxl);
+  padding-bottom: var(--space-xxxl);
+  z-index: 1;
+}
+
+.comparison-section > .container {
+    position: relative;
+    z-index: 1;
+}
+
+.comparison-section .section-header .section-title,
+.comparison-section .section-header .section-subtitle {
+  color: var(--dark);
+}
+.comparison-section .section-header .section-subtitle {
+  color: var(--secondary-dark);
+}
+
+/* Testimonial styling used within ComparisonSection via className="pricing-testimonial" */
+.comparison-section .pricing-testimonial {
+  background-color: var(--primary-lighter);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-xl) var(--space-xxl);
+  margin: 0 auto var(--space-xxl);
+  max-width: 800px;
+  border: 1px solid var(--primary-light);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  text-align: center;
+}
+
+.comparison-section .pricing-testimonial blockquote {
+  font-size: var(--font-size-lg);
+  font-style: italic;
+  line-height: var(--line-height-relaxed);
+  color: var(--text);
+  margin-bottom: var(--space-lg);
+  position: relative;
+}
+
+.comparison-section .pricing-testimonial blockquote::before {
+  content: '"';
+  font-size: var(--font-size-6xl);
+  position: absolute;
+  left: -10px;
+  top: -20px;
+  color: var(--primary-light);
+  font-family: Georgia, serif;
+  opacity: 0.8;
+  line-height: 1;
+}
+.comparison-section .pricing-testimonial blockquote::after {
+  content: '"';
+  font-size: var(--font-size-6xl);
+  position: absolute;
+  right: -10px;
+  bottom: -35px;
+  color: var(--primary-light);
+  font-family: Georgia, serif;
+  opacity: 0.8;
+  line-height: 1;
+}
+
+.comparison-section .pricing-testimonial cite {
+  font-style: normal;
+  font-weight: var(--font-weight-semibold);
+  color: var(--primary-dark);
+  display: block;
+  font-size: var(--font-size-md);
+}
+
+/* Comparison Grid and Item Styles */
+.comparison-grid {
+  display: grid;
+  /* Uses repeat(4, 1fr) from landing-page.css for 4 columns */
+  /* The component itself sets className="comparison-grid mt-8", so it should take this style */
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-xl);
+  margin-top: var(--space-xxl); /* This is from landing-page.css, if mt-8 utility not sufficient */
+}
+
+/* Styling for items within comparison-grid.
+   The ComparisonSection.jsx uses <div className="agency-benefit"> for cards.
+   These styles adapt .agency-benefit specifically for the .comparison-section context.
+*/
+.comparison-section .agency-benefit {
+  background-color: #FFFFFF !important; /* Force white background */
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  text-align: center;
+  border: 1px solid var(--secondary-lighter);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--dark); /* Default text color */
+  backdrop-filter: none !important; /* Override from general .agency-benefit */
+}
+
+.comparison-section .agency-benefit:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-lighter);
+  background-color: #FFFFFF !important; /* Ensure hover background remains white */
+}
+
+.comparison-section .agency-benefit-title, /* Handles h3 inside .agency-benefit */
+.comparison-section .agency-benefit h3 { /* More general h3 targeting if class isn't on h3 */
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--dark) !important; /* Ensure dark title */
+  margin-bottom: var(--space-sm);
+  min-height: 2.4em; /* For alignment */
+  line-height: var(--line-height-tight);
+}
+
+.comparison-section .agency-benefit-description, /* Handles p inside .agency-benefit */
+.comparison-section .agency-benefit p { /* More general p targeting */
+  color: var(--secondary-dark) !important;
+  margin-bottom: var(--space-md);
+  flex-grow: 1;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.comparison-section .agency-benefit .comparison-price {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--dark) !important; /* Price color */
+  margin-top: auto;
+  padding-top: var(--space-md);
+  margin-bottom: var(--space-xs);
+}
+
+.comparison-section .agency-benefit .comparison-note {
+  font-size: var(--font-size-xs);
+  color: var(--secondary) !important; /* Note color */
+  margin-top: 0;
+  line-height: var(--line-height-normal);
+}
+
+.comparison-section .agency-benefit .comparison-roi {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--success-dark) !important; /* ROI color */
+  margin-top: var(--space-sm);
+  background-color: var(--success-lighter);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--border-radius-sm);
+  display: inline-block;
+  line-height: var(--line-height-normal);
+}
+
+/* Special styling for the highlighted Twitilytics card */
+.comparison-section .agency-benefit.twitilytics {
+  border: 2px solid var(--primary) !important;
+  box-shadow: 0 10px 30px rgba(29, 161, 242, 0.2) !important;
+}
+
+.comparison-section .agency-benefit.twitilytics .agency-benefit-title,
+.comparison-section .agency-benefit.twitilytics h3,
+.comparison-section .agency-benefit.twitilytics .comparison-note {
+  color: var(--dark) !important; /* Ensure text is dark on white background */
+}
+
+.comparison-section .agency-benefit.twitilytics .comparison-price {
+  color: var(--primary-dark) !important; /* Highlighted price color */
+}
+
+.comparison-section .agency-benefit.twitilytics .comparison-roi {
+  background-color: var(--success-lighter) !important; /* Ensure these specific styles apply */
+  color: var(--success-dark) !important;
+}
+
+/* Icon wrapper styles used in ComparisonSection */
+.comparison-section .agency-benefit-icon, /* If the icon container uses this class */
+.comparison-section .comparison-icon-wrapper { /* Or this specific class from the JSX */
+    background-color: var(--primary-lighter);
+    width: 64px;
+    height: 64px;
+    border-radius: var(--border-radius-lg); /* Rounded square */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--space-lg);
+    color: var(--primary); /* This color will be inherited by SVG if stroke="currentColor" */
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.comparison-section .agency-benefit-icon svg,
+.comparison-section .comparison-icon-wrapper svg {
+    width: 32px;
+    height: 32px;
+    stroke: currentColor !important; /* Ensures SVG stroke color inherits from parent */
+}
+.comparison-section .agency-benefit:hover .agency-benefit-icon,
+.comparison-section .comparison-item:hover .comparison-icon-wrapper, /* If .comparison-item is used */
+.comparison-section .agency-benefit:hover .comparison-icon-wrapper {
+    background-color: var(--primary);
+    color: var(--light); /* SVG will turn white on hover */
+}
+
+/* Responsive adjustments for Comparison Grid */
+@media (max-width: 1024px) {
+  .comparison-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) { /* Was 768px in landing-page.css, using 640px as it's common for single column */
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .comparison-section .agency-benefit.twitilytics {
+    order: -1; /* Moves the highlighted Twitilytics card to the top on mobile */
+  }
+}

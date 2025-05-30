@@ -1,0 +1,452 @@
+/* Main CSS file for Twitilytics */
+
+/* Import other CSS files */
+@import './landing-page.css';
+@import './payment.css';
+@import './report-page.css';
+@import './hero-section.css';
+@import './problem-section.css';
+@import './solution-section.css';
+@import './features-section.css'; /* ADD THIS LINE */
+@import './how-it-works-section.css'; /* ADD THIS LINE FOR THE NEW FILE */
+@import './comparison-section.css';
+@import './pricing-section.css'; /* THIS LINE WAS ADDED */
+@import './agency-success-program.css';
+@import './faq-section.css';
+@import './file-upload-section.css';
+@import './landing-footer.css'; /* ADD THIS NEW LINE */
+@import './shared/shared-section-header.css'; /* ADD THIS LINE */
+@import './shared/shared-benefit-card.css'; /* ADD THIS LINE */
+@import './shared/shared-email-form.css'; /* ADD THIS LINE */
+
+/* Global styles */
+:root {
+  /* Color System */
+  --primary: #1DA1F2;
+  --primary-light: #67c1ff;
+  --primary-lighter: #e8f5fe;
+  --primary-dark: #0c85d0;
+  --primary-darker: #0a6da9;
+  
+  --secondary: #657786;
+  --secondary-light: #AAB8C2;
+  --secondary-lighter: #E1E8ED;
+  --secondary-dark: #556677;
+  --secondary-darker: #424f5a;
+  
+  --accent: #F45D22;
+  --accent-light: #ff7d4d;
+  --accent-lighter: #fff0eb;
+  --accent-dark: #e04e18;
+  --accent-darker: #b83e13;
+  
+  --success: #4BB543;
+  --success-light: #7ed178;
+  --success-lighter: #eaf7e9;
+  --success-dark: #3c9836;
+  --success-darker: #307a2b;
+  
+  --error: #E0245E;
+  --error-light: #f05c87;
+  --error-lighter: #fce8ef;
+  --error-dark: #b91e4e;
+  --error-darker: #94183f;
+  
+  --background: #F5F8FA;
+  --light: #FFFFFF;
+  --dark: #14171A;
+  --text: #292F33;
+  /* Added --text-light from original index.css as it's used */
+  --text-light: #AAB8C2;
+  
+  /* Spacing Scale */
+  --space-xxs: 0.25rem;    /* 4px */
+  --space-xs: 0.5rem;      /* 8px */
+  --space-sm: 0.75rem;     /* 12px */
+  --space-md: 1rem;        /* 16px */
+  --space-lg: 1.5rem;      /* 24px */
+  --space-xl: 2rem;        /* 32px */
+  --space-xxl: 3rem;       /* 48px */
+  --space-xxxl: 5rem;      /* 80px */
+  
+  /* Typography Scale */
+  --font-size-xs: 0.875rem;    /* 14px - increased from 12px */
+  --font-size-sm: 1rem;        /* 16px - increased from 14px */
+  --font-size-md: 1.125rem;    /* 18px - increased from 16px */
+  --font-size-lg: 1.375rem;    /* 22px - increased from 18px */
+  --font-size-xl: 1.5rem;      /* 24px - increased from 20px */
+  --font-size-xxl: 1.75rem;    /* 28px - increased from 24px */
+  --font-size-xxxl: 2.25rem;   /* 36px - increased from 32px */
+  --font-size-4xl: 2.75rem;    /* 44px - increased from 40px */
+  --font-size-5xl: 3.25rem;    /* 52px - increased from 48px */
+  --font-size-6xl: 3.75rem;    /* 60px - increased from 56px */
+  
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  
+  /* Line Heights */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.6;
+  
+  /* UI Elements */
+  --border-radius-sm: 4px;
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-full: 9999px;
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 6px 10px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 15px 25px rgba(0, 0, 0, 0.1);
+  
+  /* Transitions */
+  --transition: all 0.3s ease; /* Kept from original index.css, landing-page.css had more specific ones */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
+  
+  /* Common Values */
+  --container-width: 1200px;
+  --header-height: 80px;
+  --footer-height: 120px;
+  
+  --bp-md: 768px;
+}
+
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: var(--text);
+  line-height: 1.6;
+  background-color: var(--background);
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  color: var(--dark);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Utility classes */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.mt-8 {
+  margin-top: 2rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mb-8 {
+  margin-bottom: 2rem;
+}
+
+.p-4 {
+  padding: 1rem;
+}
+
+.rounded {
+  border-radius: var(--border-radius);
+}
+
+.shadow {
+  box-shadow: var(--shadow);
+}
+
+/* App layout */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+}
+
+/* Loading spinner */
+.loading-spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.loading-spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid var(--primary);
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error messages */
+.error-message {
+  background-color: rgba(224, 36, 94, 0.1);
+  border-left: 4px solid var(--error);
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: var(--border-radius);
+  color: var(--error);
+}
+
+/* Success messages */
+.success-message {
+  background-color: rgba(75, 181, 67, 0.1);
+  border-left: 4px solid var(--success);
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: var(--border-radius);
+  color: var(--success);
+}
+
+/* Info messages */
+.info-message {
+  background-color: rgba(29, 161, 242, 0.1);
+  border-left: 4px solid var(--primary);
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: var(--border-radius);
+}
+
+/* Buttons */
+.button {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.button-primary {
+  background-color: var(--primary);
+  color: var(--light);
+}
+
+.button-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.button-secondary {
+  background-color: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+
+.button-secondary:hover {
+  background-color: rgba(29, 161, 242, 0.1);
+  transform: translateY(-2px);
+}
+
+.button-accent {
+  background-color: var(--accent);
+  color: var(--light);
+}
+
+.button-accent:hover {
+  background-color: #e04e18;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+/* Forms */
+input, select, textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--border-radius);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(29, 161, 242, 0.2);
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+  
+  h2 {
+    font-size: 1.75rem;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.75rem;
+  }
+  
+  .button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Custom Scrollbar Styles */
+/* REMOVED OLD SCROLLBAR STYLES - replaced with new global styles adapted from Features section */
+/*
+::-webkit-scrollbar {
+  width: 12px; 
+  height: 12px; 
+}
+
+::-webkit-scrollbar-track {
+  background: var(--secondary-lighter); 
+  border-radius: 10px; 
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--primary); 
+  border-radius: 10px; 
+  border: 3px solid var(--secondary-lighter); 
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary-dark); 
+}
+
+* {
+  scrollbar-width: thin; 
+  scrollbar-color: var(--primary) var(--secondary-lighter); 
+}
+*/
+
+/* NEW GLOBAL SCROLLBAR STYLES - adapted from Features section */
+/* For Webkit browsers (Chrome, Safari, Edge) */
+html::-webkit-scrollbar { /* Apply to html for the main page scrollbar */
+  width: 12px;
+  height: 12px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent; /* Make track transparent */
+}
+
+html::-webkit-scrollbar-thumb {
+  background-color: var(--secondary-light); /* Color of the scroll thumb */
+  border-radius: var(--border-radius-full); /* Fully rounded ends */
+  border: 3px solid transparent; /* Transparent border to create padding effect */
+  background-clip: padding-box; /* Ensures border doesn't paint over thumb color */
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary-light); /* Color of the scroll thumb on hover */
+}
+
+/* For Firefox */
+/* Note: Firefox scrollbar styling is more limited.
+   We can't make the track fully transparent behind the thumb's "padding" easily.
+   This will result in a thin scrollbar with specified colors.
+*/
+html { /* Apply to html for Firefox */
+  scrollbar-width: thin; /* "auto" or "thin" */
+  scrollbar-color: var(--secondary-light) transparent; /* thumb color and track color (transparent) */
+}
+/* To make Firefox thumb hover match more closely, you might need JS or accept the limitation.
+   For now, it will use --secondary-light.
+   If you want a hover effect for Firefox, it usually requires a different approach or more complex CSS not fully supported.
+   The closest for hover is often handled by browser defaults or system settings.
+   We'll rely on the default scrollbar-color behavior for Firefox hover.
+*/

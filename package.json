@@ -1,0 +1,44 @@
+{
+  "name": "twitilytics",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "cross-env": "^7.0.3",
+    "cross-spawn": "^7.0.6",
+    "deepmerge": "^4.3.1",
+    "dom-serializer": "^2.0.0",
+    "domelementtype": "^2.3.0",
+    "domhandler": "^5.0.3",
+    "domutils": "^3.2.2",
+    "entities": "^4.5.0",
+    "fast-deep-equal": "^2.0.1",
+    "html-to-text": "^9.0.5",
+    "htmlparser2": "^8.0.2",
+    "isexe": "^2.0.0",
+    "leac": "^0.6.0",
+    "parseley": "^0.12.1",
+    "path-key": "^3.1.1",
+    "peberminta": "^0.9.0",
+    "prettier": "^3.5.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-promise-suspense": "^0.3.4",
+    "resend": "^4.5.0",
+    "scheduler": "^0.26.0",
+    "selderee": "^0.11.0",
+    "shebang-command": "^2.0.0",
+    "shebang-regex": "^3.0.0",
+    "which": "^2.0.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm start\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Twitilytics Project"
+}

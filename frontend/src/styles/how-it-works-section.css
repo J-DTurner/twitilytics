@@ -1,0 +1,101 @@
+/* C:\Users\Administrator\Documents\twitilytics\frontend\src\styles\how-it-works-section.css */
+
+/* How It Works Section Styles */
+.how-it-works-section {
+  background-color: var(--light);
+}
+
+/* How It Works Section Styles - Update (Dark Theme) */
+.how-it-works-dark-theme {
+  background: linear-gradient(135deg, #0a4d7a 0%, #1a7ab8 100%);
+  color: var(--light); /* Default text color for the section */
+}
+
+.how-it-works-dark-theme .section-header .section-title,
+.how-it-works-dark-theme .section-header .section-subtitle {
+  color: var(--light);
+}
+
+
+.how-it-works-dark-theme .step-item .step-title {
+  color: var(--light);
+}
+
+.how-it-works-dark-theme .step-item p {
+  color: rgba(255, 255, 255, 0.85); /* Slightly less bright for paragraph text */
+}
+
+.how-it-works-dark-theme .step-number {
+  background-color: var(--accent); /* Make numbers pop on dark background */
+  color: var(--dark); /* Dark text on accent background */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.how-it-works-dark-theme .step-connector {
+  border-top: 2px dashed var(--accent-light); /* Use accent color for connector */
+}
+
+.how-it-works-dark-theme .btn-primary {
+  background-color: var(--accent);
+  color: var(--light); /* Ensure text is light */
+  border: none; /* Remove border if it was based on primary */
+}
+
+.how-it-works-dark-theme .btn-primary:hover,
+.how-it-works-dark-theme .btn-primary:focus {
+  background-color: var(--accent-dark);
+}
+
+.steps-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xl);
+  margin-top: var(--space-xxl);
+}
+
+.step-item {
+  text-align: center;
+  position: relative;
+}
+
+.step-number {
+  background-color: var(--primary);
+  color: var(--light);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  margin: 0 auto var(--space-lg);
+}
+
+.step-title {
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-md);
+}
+
+.step-connector {
+  position: absolute;
+  top: 20px;
+  right: -30px;
+  width: 60px;
+  border-top: 2px dashed var(--primary);
+}
+
+.step-item:last-child .step-connector {
+  display: none;
+}
+
+/* Responsive Styles for How It Works Section */
+@media (max-width: 768px) {
+  .steps-container {
+    grid-template-columns: 1fr;
+  }
+
+  .step-connector {
+    display: none;
+  }
+}

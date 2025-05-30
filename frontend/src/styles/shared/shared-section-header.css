@@ -1,0 +1,56 @@
+/* C:\Users\Administrator\Documents\twitilytics\frontend\src\styles\shared\shared-section-header.css */
+
+.shared-section-header {
+  text-align: center;
+  margin-bottom: var(--space-xxl);
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative; /* For the ::after pseudo-element */
+  padding-bottom: var(--space-lg); /* Space for the underline */
+}
+
+.shared-section-header__title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-lg);
+  color: var(--dark); /* Default for light theme */
+  line-height: var(--line-height-tight);
+  width: 100%;
+  display: block;
+}
+
+.shared-section-header__subtitle {
+  font-size: var(--font-size-xl);
+  color: var(--secondary); /* Default for light theme */
+  max-width: 800px;
+  margin: 0 auto;
+  line-height: var(--line-height-relaxed);
+  width: 100%;
+  display: block;
+}
+
+.shared-section-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  border-radius: var(--border-radius-full);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%); /* Default for light theme */
+}
+
+/* Dark Theme Overrides */
+.shared-section-header--dark .shared-section-header__title,
+.shared-section-header--dark .shared-section-header__subtitle {
+  color: var(--light);
+}
+
+.shared-section-header--dark::after {
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-light) 100%);
+}
