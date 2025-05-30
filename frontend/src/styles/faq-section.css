@@ -27,7 +27,7 @@
 }
 
 .faq-question {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   display: flex;
   align-items: center;
@@ -68,20 +68,28 @@
 .faq-answer {
   padding: 0 var(--space-xl) var(--space-lg);
   animation: fadeIn var(--transition-normal) ease-out;
+  font-size: var(--font-size-lg);
 }
 
 .faq-answer p {
   margin-bottom: var(--space-md);
   line-height: var(--line-height-relaxed);
+  font-size: var(--font-size-lg);
 }
 
 .faq-answer ol, .faq-answer ul {
   margin: var(--space-md) 0;
   padding-left: var(--space-lg);
+  font-size: var(--font-size-lg);
 }
 
 .faq-answer li {
   margin-bottom: var(--space-sm);
+  font-size: var(--font-size-lg);
+}
+
+.faq-answer a {
+  font-size: var(--font-size-lg);
 }
 
 @keyframes fadeIn {

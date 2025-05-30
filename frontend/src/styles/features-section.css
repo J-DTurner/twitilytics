@@ -124,7 +124,6 @@
   border-color: var(--primary-light);
 }
 
-/* Icon container for each feature */
 .feature-icon {
   background: var(--primary-lighter);
   width: 48px;
@@ -184,21 +183,73 @@
 }
 
 /* Responsive adjustments for the features section */
-@media (max-width: var(--bp-md)) { /* --bp-md is 768px */
+@media (max-width: var(--bp-md)) {
   .feature-split {
-    grid-template-columns: 1fr; /* Stack columns on smaller screens */
+    grid-template-columns: 1fr;
+    gap: var(--space-xl);
   }
 
   .feature-visual {
     margin-bottom: var(--space-xl);
-    aspect-ratio: 16/9; /* Adjust aspect ratio for stacked layout */
+    aspect-ratio: 16/9;
   }
 
   .feature-list-wrapper {
-    overflow-y: visible; /* Disable scrolling for stacked layout */
-    height: auto; /* Let content define height */
-    min-height: 0; /* Reset min-height */
-    padding-right: 0; /* No scrollbar, so no padding needed */
-    margin-right: 0; /* Reset margin */
+    overflow-y: visible;
+    height: auto !important;
+    min-height: 0;
+    padding-right: 0;
+    margin-right: 0;
+    max-height: none;
+  }
+}
+
+/* Enhanced media query for small screens */
+@media (max-width: 1100px) {
+  .feature-split {
+    grid-template-columns: 1fr; /* Single column layout when visual is hidden */
+    gap: 0;
+  }
+  .feature-visual {
+    display: none !important;
+    visibility: hidden !important;  /* Additional layer to ensure it's hidden */
+  }
+  .feature-visual img {
+    display: none !important;  /* Explicitly hide the image inside */
+  }
+
+  .feature-list-wrapper {
+    padding: 0;
+    width: 100%; /* Ensure it takes full width */
+    max-width: none; /* Remove any width restrictions */
+  }
+
+  .feature-track {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-xl); /* Increased gap for better spacing */
+    width: 100%;
+    max-width: 1000px; /* Reasonable max width for readability */
+    margin: 0 auto; /* Center the grid */
+  }
+
+  .feature-entry {
+    padding: var(--space-xl); /* Restore original padding */
+    height: 100%; /* Ensure equal height cards */
+    min-height: 280px; /* Minimum height for consistency */
+  }
+}
+
+/* Additional breakpoint for mobile */
+@media (max-width: 768px) {
+  .feature-track {
+    grid-template-columns: 1fr; /* Single column on mobile */
+    gap: var(--space-lg);
+    max-width: 500px; /* Smaller max width on mobile */
+  }
+  
+  .feature-entry {
+    min-height: auto; /* Remove min-height on mobile */
+    padding: var(--space-lg); /* Smaller padding on mobile */
   }
 }

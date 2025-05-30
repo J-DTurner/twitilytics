@@ -237,20 +237,106 @@
 }
 
 /* Responsive Styles for Pricing Section */
-@media (max-width: 1075px) { /* Breakpoint for stacking cards before third card wraps */
+@media (max-width: 1075px) { /* Breakpoint for stacking cards */
   .pricing-cards-container {
-    grid-template-columns: 1fr !important; /* Stack cards vertically */
+    grid-template-columns: 1fr !important; 
+    max-width: 500px; 
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .pricing-card {
+    padding: var(--space-xl);
+  }
+
+  .pricing-name {
+    font-size: var(--font-size-xl); 
+    min-height: auto; 
+    margin-bottom: var(--space-sm);
+  }
+
+  .pricing-price {
+    font-size: var(--font-size-4xl); 
+    margin-bottom: var(--space-xxs);
+  }
+
+  .pricing-price span {
+    font-size: var(--font-size-xl);
+  }
+
+  .pricing-card.coming-soon .pricing-price span {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .pricing-per-unit {
+    font-size: var(--font-size-sm); /* Increased from xs */
+    min-height: auto;
+    margin-bottom: var(--space-md);
+  }
+
+  .pricing-description {
+    font-size: var(--font-size-md); /* Increased from sm, or kept if already md */
+    min-height: auto; 
+    -webkit-line-clamp: unset; 
+    line-clamp: unset; 
+    max-height: none; 
+    margin-bottom: var(--space-lg);
+  }
+
+  .pricing-features {
+    margin-bottom: var(--space-lg); 
+    max-height: none; 
+    overflow-y: visible; 
+  }
+
+  .pricing-feature {
+    font-size: var(--font-size-sm); /* Increased from xs */
+    line-height: var(--line-height-normal);
+  }
+
+  .pricing-guarantee {
+    font-size: var(--font-size-sm); /* Increased from default 0.875rem */
+    margin-top: auto; /* This ensures it's at the bottom */
+    padding-top: var(--space-lg); /* Add padding if it was getting cramped */
+  }
+
+  .pricing-card .btn-full { 
+    padding: var(--space-sm) var(--space-lg);
+    font-size: var(--font-size-md);
+  }
+
+  .pricing-card .shared-email-form { 
+    margin-top: var(--space-lg);
+  }
+
+  .pricing-card .shared-email-form .btn {
+    font-size: var(--font-size-sm); 
   }
 }
 
 @media (max-width: 480px) {
   .pricing-price {
-    font-size: var(--font-size-4xl);
+    font-size: var(--font-size-3xl); 
   }
   .pricing-price span {
-    font-size: var(--font-size-xl); /* Adjust decimal part for smaller screens */
+    font-size: var(--font-size-lg); 
   }
   .pricing-card.coming-soon .pricing-price span {
-    font-size: var(--font-size-2xl); /* Adjust "Pro+" for smaller screens */
+    font-size: var(--font-size-xl); 
+  }
+  .pricing-cards-container {
+    max-width: 100%; 
+  }
+  .pricing-card {
+    padding: var(--space-lg) var(--space-md);
+  }
+  /* Ensure text elements are still readable on very small screens */
+  .pricing-per-unit,
+  .pricing-feature,
+  .pricing-guarantee {
+    font-size: var(--font-size-sm); /* Keep at sm, or adjust to xs if sm is too large here */
+  }
+  .pricing-description {
+    font-size: var(--font-size-md); /* Keep at md, or adjust to sm */
   }
 }

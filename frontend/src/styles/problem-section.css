@@ -92,9 +92,48 @@
 }
 
 /* Responsive adjustments for Problem Section */
-@media (max-width: 768px) { /* From general responsive styles in landing-page.css */
+@media (max-width: 1100px) {
+  .problem-grid {
+    grid-template-columns: 1fr; /* Single column layout */
+    gap: var(--space-xl);
+  }
+  
+  .problem-image-container {
+    order: -1; /* Move image above the text content */
+    margin-bottom: var(--space-xl);
+  }
+  
+  .problem-text {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-lg);
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  
+  .problem-point {
+    margin-bottom: var(--space-md); /* Reduce bottom margin in grid */
+  }
+  
+  .problem-text .text-center {
+    grid-column: 1 / -1; /* Span across both columns */
+    margin-top: var(--space-xl);
+  }
+}
+
+@media (max-width: 768px) {
   .problem-grid {
     grid-template-columns: 1fr;
     gap: var(--space-xl);
+  }
+  
+  .problem-text {
+    grid-template-columns: 1fr; /* Single column on mobile */
+    max-width: 500px;
+  }
+  
+  .problem-point {
+    margin-bottom: var(--space-lg); /* Restore original spacing on mobile */
   }
 }

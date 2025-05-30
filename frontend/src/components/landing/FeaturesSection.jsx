@@ -60,29 +60,34 @@ const FeaturesSection = () => {
     },
   ];
 
-  const [listHeight, setListHeight] = useState(320); // Default height
+  const [listHeight, setListHeight] = useState('auto');
   const visualRef = useRef(null);
-  const breakpoint = 768; // Corresponds to --bp-md
+  const desktopBreakpoint = 800;
 
   useLayoutEffect(() => {
     const updateHeight = () => {
-      if (visualRef.current) {
-        if (window.innerWidth > breakpoint) {
+      const currentWindowWidth = window.innerWidth;
+      
+      if (currentWindowWidth > desktopBreakpoint && visualRef.current) {
+        const computedStyle = window.getComputedStyle(visualRef.current);
+        const isVisible = computedStyle.display !== 'none' && visualRef.current.offsetHeight > 0;
+        
+        if (isVisible) {
           const visualPanelHeight = visualRef.current.getBoundingClientRect().height;
-          // Set list height to visual panel height, but not more than 90% of viewport height
-          setListHeight(Math.min(visualPanelHeight, window.innerHeight * 0.9));
+          setListHeight(Math.min(visualPanelHeight, window.innerHeight * 0.8));
         } else {
-          // On smaller screens, allow the list to define its own height
           setListHeight('auto');
         }
+      } else {
+        setListHeight('auto');
       }
     };
 
-    updateHeight(); // Initial call
-    window.addEventListener('resize', updateHeight); // Update on resize
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
 
-    return () => window.removeEventListener('resize', updateHeight); // Cleanup
-  }, []); // Empty dependency array, effect runs once on mount and cleans up on unmount. Resize is handled by event listener.
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
 
   const VisualPanel = () => (
     <div ref={visualRef} className="feature-visual">
@@ -93,9 +98,9 @@ const FeaturesSection = () => {
   const FeatureList = ({ items, height }) => {
     const wrapperStyle = { 
       height, 
-      overflowY: height === 'auto' ? 'visible' : 'auto', // Only scroll if height is fixed
-      scrollbarWidth: 'thin', // For Firefox
-      scrollbarColor: 'var(--primary-light) var(--secondary-lighter)' // For Firefox
+      overflowY: height === 'auto' ? 'visible' : 'auto',
+      scrollbarWidth: 'thin',
+      scrollbarColor: 'var(--primary-light) var(--secondary-lighter)'
     };
     
     return (

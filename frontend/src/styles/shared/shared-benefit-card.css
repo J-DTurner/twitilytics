@@ -76,10 +76,85 @@
   line-height: var(--line-height-relaxed);
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .agency-benefits-grid,
-  .solution-benefits {
+  .solution-benefits { /* This targets containers, not the card itself directly for stacking */
     grid-template-columns: 1fr !important;
     gap: 2rem !important;
+  }
+
+  /* Specific adjustments for .shared-benefit-card when in a single-column layout */
+  .shared-benefit-card {
+    padding: var(--space-xl); /* Keep original padding */
+    text-align: left; /* Align text to left for wider card */
+    display: flex; /* Use flex for horizontal layout */
+    flex-direction: row; /* Icon and text side by side */
+    align-items: flex-start; /* Align items to start */
+    gap: var(--space-lg); /* Gap between icon and text content */
+  }
+
+  .shared-benefit-card__icon {
+    margin: 0; /* Remove all margins, rely on gap */
+    flex-shrink: 0; /* Prevent icon from shrinking */
+  }
+
+  .shared-benefit-card__content {
+    flex: 1; /* Text content takes remaining space */
+    display: flex;
+    flex-direction: column;
+  }
+
+  .shared-benefit-card__title {
+    font-size: var(--font-size-xxl); /* Increased from xl (was 24px, now 28px) */
+    text-align: left; /* Ensure title is left-aligned */
+    min-height: auto; /* Allow natural height */
+    margin-bottom: var(--space-md); /* Add spacing below title */
+  }
+
+  .shared-benefit-card__description {
+    font-size: var(--font-size-lg); /* Increased from sm (was 16px, now 22px) */
+    text-align: left; /* Ensure description is left-aligned */
+    line-height: var(--line-height-relaxed); /* Better readability */
+    margin-bottom: 0; /* Remove bottom margin */
+  }
+}
+
+/* General responsive adjustments for shared-benefit-card when it likely stacks */
+@media (max-width: 768px) {
+  .shared-benefit-card {
+    display: grid; /* Change from flex to grid for more control over item placement */
+    grid-template-columns: [icon-start] max-content [icon-end text-start] 1fr [text-end]; /* Icon column, text column */
+    grid-template-rows: [title-start] auto [title-end desc-start] auto [desc-end];    /* Row for title, row for description */
+    column-gap: var(--space-md); /* Gap between icon and text block */
+    align-items: start; /* Align items to the start (top) of their grid cell */
+    padding: var(--space-lg);
+    text-align: left; /* Ensure text within the text block is left-aligned */
+    /* Remove or override base flexbox properties if they conflict */
+    flex-direction: unset; /* Unset flex-direction from base style */
+    align-items: unset; /* Unset align-items from base style (grid handles this now) */
+  }
+
+  .shared-benefit-card__icon {
+    grid-column: icon-start / icon-end;
+    grid-row: title-start / desc-end; /* Icon spans both title and description rows */
+    margin: 0; /* Remove previous margins, rely on grid gap and alignment */
+    /* The icon's own flex properties for centering its SVG are still fine */
+  }
+
+  .shared-benefit-card__title {
+    grid-column: text-start / text-end;
+    grid-row: title-start / title-end;
+    font-size: var(--font-size-lg); /* Adjusted from previous step for clarity */
+    min-height: auto; /* Allow natural height */
+    text-align: left;
+    margin-bottom: var(--space-xs); /* Add a small margin below the title */
+  }
+
+  .shared-benefit-card__description {
+    grid-column: text-start / text-end;
+    grid-row: desc-start / desc-end;
+    font-size: var(--font-size-sm);
+    text-align: left;
+    line-height: var(--line-height-normal);
   }
 }
