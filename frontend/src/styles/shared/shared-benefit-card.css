@@ -75,3 +75,11 @@
   font-size: var(--font-size-md);
   line-height: var(--line-height-relaxed);
 }
+
+@media (max-width: 1000px) {
+  .agency-benefits-grid,
+  .solution-benefits {
+    grid-template-columns: 1fr !important;
+    gap: 2rem !important;
+  }
+}

@@ -81,18 +81,3 @@
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
-
-
-/* Responsive Styles for Solution Section Benefits */
-@media (max-width: 1024px) {
-  .solution-benefits {
-    grid-template-columns: repeat(2, 1fr) !important; /* 2 columns on tablets */
-  }
-}
-
-@media (max-width: 768px) {
-  .solution-benefits {
-    grid-template-columns: 1fr !important; /* 1 column on mobile */
-    gap: 2rem !important;
-  }
-}

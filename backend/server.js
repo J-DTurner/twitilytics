@@ -113,8 +113,9 @@ app.use((err, req, res, next) => {
 
 // Start the server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  logger.info(`Server running on ${HOST}:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
 // Handle unhandled rejections

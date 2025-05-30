@@ -35,30 +35,10 @@
   z-index: 1;
 }
 
-@media (max-width: 1024px) {
-  .agency-benefits-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .agency-benefits-grid {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-}
-
-
-/* Styles specific to .agency-program when .agency-program-dark-theme is applied */
-/* Note: .agency-program itself provides the background gradient and base text color. */
-/* .agency-program-dark-theme specific overrides and child styling: */
-
 .agency-program .section-header .section-title,
 .agency-program .section-header .section-subtitle {
   color: var(--light);
 }
-
-
 
 /* Button and Form Styles within the Dark Theme */
 .agency-program .btn-accent { /* For "Join Waitlist" buttons */

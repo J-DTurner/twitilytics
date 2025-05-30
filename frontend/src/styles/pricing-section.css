@@ -237,6 +237,12 @@
 }
 
 /* Responsive Styles for Pricing Section */
+@media (max-width: 1075px) { /* Breakpoint for stacking cards before third card wraps */
+  .pricing-cards-container {
+    grid-template-columns: 1fr !important; /* Stack cards vertically */
+  }
+}
+
 @media (max-width: 480px) {
   .pricing-price {
     font-size: var(--font-size-4xl);
