@@ -2,10 +2,19 @@ modules = ["nodejs-20", "web", "bash"]
 run = "cd backend && npm run dev & cd .. & cd frontend && npm start"
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-23_05"
 
 [deployment]
-run = ["sh", "-c", "cd backend && npm run dev & cd .. & cd frontend && npm start"]
+
+[packager]
+language = "javascript"
+
+# Add hot-reloading support if using a framework
+entrypoint = "index.js"  // Or your main file, e.g., index.html for static sites
+
+# Enable basic web config
+[unitTest]
+language = "javascript"
 
 [[ports]]
 localPort = 8001
