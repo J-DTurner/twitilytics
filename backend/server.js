@@ -58,9 +58,8 @@ app.use(express.json({ limit: '2mb' })); // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true, limit: '2mb' })); // Parse URL-encoded bodies
 app.use(compression()); // Compress responses
 
-// Serve static files from frontend
-app.use('/images', express.static(path.join(__dirname, '../frontend/public/images')));
-app.use(express.static(path.join(__dirname, '../frontend/public')));
+// Serve static files from the React app build directory
+app.use(express.static(path.join(__dirname, '../frontend/build')));
 
 // Configure rate limiting
 const apiLimiter = rateLimit({
@@ -92,12 +91,31 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/email', emailRoutes);
 // app.use('/api/user', userRoutes); // REMOVE or comment out
 
-// 404 handler
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+});
+
+// 404 handler (Now this will only catch if /frontend/build/index.html itself is missing or for non-GET requests not handled by API routes)
 app.use((req, res, next) => {
-  res.status(404).json({
-    status: 'error',
-    message: `Route ${req.originalUrl} not found`
-  });
+  if (req.originalUrl.startsWith('/api/')) {
+    return res.status(404).json({
+      status: 'error',
+      message: `API Route ${req.originalUrl} not found`
+    });
+  }
+  // For non-API routes not caught by static serving or the '*', let the browser handle or send index.html again if appropriate.
+  // However, the catch-all `app.get('*', ...)` should prevent most of these scenarios for GET requests.
+  // If a non-GET request hits this, it's an unhandled route.
+  if (req.method !== 'GET') {
+    return res.status(404).json({
+      status: 'error',
+      message: `Route ${req.method} ${req.originalUrl} not found`
+    });
+  }
+  // Fallback to serving index.html for any other GET case (though '*' should cover it)
+  res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
 });
 
 // Global error handler
