@@ -4,13 +4,15 @@
   "description": "Twitilytics - Twitter Analytics with AI (Full Stack)",
   "main": "backend/server.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" -p \"[{name}]\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "start": "NODE_ENV=production node backend/server.js",
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm:dev:backend\" \"npm:dev:frontend\"",
     "dev:backend": "nodemon backend/server.js",
-    "dev:frontend": "cd frontend && cross-env PORT=8001 DANGEROUSLY_DISABLE_HOST_CHECK=true FAST_REFRESH=false WEBPACK_DEV_SERVER_CLIENT_LOGLEVEL=none WEBPACK_DEV_SERVER_HOT=false react-scripts start",
-    "build": "cd frontend && react-scripts build",
+    "dev:frontend": "cd frontend && vite",
+    "build": "cd frontend && vite build",
+    "build:full": "npm run build && echo 'Backend does not require a separate build step currently.'",
+    "preview:frontend": "cd frontend && vite preview",
     "test": "jest",
-    "test:frontend": "cd frontend && react-scripts test",
+    "test:frontend": "echo \"Frontend tests need setup with Vitest or similar for Vite projects\"",
     "install:clean": "rm -rf node_modules backend/node_modules frontend/node_modules && npm install"
   },
   "dependencies": {
@@ -34,7 +36,6 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.14.1",
     "react-router-hash-link": "^2.4.3",
-    "react-scripts": "5.0.1",
     "resend": "^4.5.1",
     "stripe": "^14.5.0",
     "web-vitals": "^3.3.2",
@@ -47,9 +48,10 @@
     "concurrently": "^9.1.2",
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.3",
+    "vite": "^5.0.0",
+    "@vitejs/plugin-react": "^4.0.0"
   },
-  "proxy": "http://localhost:3001",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -63,23 +65,5 @@
     "fullstack"
   ],
   "author": "Twitilytics Team",
-  "license": "MIT",
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  }
+  "license": "MIT"
 }
