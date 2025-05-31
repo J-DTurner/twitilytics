@@ -12,7 +12,7 @@ import { apiRequest } from '../../utils/api';
  * with drag-and-drop functionality and file processing.
  */
 const FileUploadSection = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
   const dropZoneRef = useRef(null);

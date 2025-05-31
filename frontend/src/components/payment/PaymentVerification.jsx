@@ -19,7 +19,6 @@ const PaymentVerification = () => {
 
   useEffect(() => {
     const sessionId = params.get('session_id');
-    const typeFromUrl = params.get('type');
     const handleFromUrl = params.get('handle');
     const blocksFromUrl = params.get('blocks');
     

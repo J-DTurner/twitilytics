@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTweetData } from '../../context/TweetDataContext';
 import { getExecutiveSummary as fetchExecutiveSummary } from '../../services/analysisService';
-import UpgradePrompt from './UpgradePrompt';
 
 /**
  * Executive Summary Section Component

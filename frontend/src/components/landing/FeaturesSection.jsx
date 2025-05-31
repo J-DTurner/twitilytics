@@ -1,5 +1,4 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import { HashLink } from 'react-router-hash-link';
 import SharedSectionHeader from './shared/SharedSectionHeader';
 
 /**

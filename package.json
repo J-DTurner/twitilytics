@@ -7,7 +7,7 @@
     "start": "node backend/server.js",
     "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" -p \"[{name}]\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "nodemon backend/server.js",
-    "dev:frontend": "cd frontend && cross-env PORT=8001 DANGEROUSLY_DISABLE_HOST_CHECK=true react-scripts start",
+    "dev:frontend": "cd frontend && cross-env PORT=8001 DANGEROUSLY_DISABLE_HOST_CHECK=true WDS_SOCKET_PROTOCOL=wss WDS_SOCKET_HOST=$REPL_SLUG.$REPL_OWNER.replit.dev WDS_SOCKET_PATH=/ws react-scripts start",
     "build": "cd frontend && react-scripts build",
     "test": "jest",
     "test:frontend": "cd frontend && react-scripts test",
