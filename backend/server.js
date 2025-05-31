@@ -59,7 +59,7 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' })); // Parse URL-enco
 app.use(compression()); // Compress responses
 
 // Serve static files from the React app build directory
-app.use(express.static(path.join(__dirname, '../frontend/build')));
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Configure rate limiting
 const apiLimiter = rateLimit({
@@ -94,10 +94,10 @@ app.use('/api/email', emailRoutes);
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
-// 404 handler (Now this will only catch if /frontend/build/index.html itself is missing or for non-GET requests not handled by API routes)
+// 404 handler (Now this will only catch if /frontend/dist/index.html itself is missing or for non-GET requests not handled by API routes)
 app.use((req, res, next) => {
   if (req.originalUrl.startsWith('/api/')) {
     return res.status(404).json({
@@ -115,7 +115,7 @@ app.use((req, res, next) => {
     });
   }
   // Fallback to serving index.html for any other GET case (though '*' should cover it)
-  res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 // Global error handler
