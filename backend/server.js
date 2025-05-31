@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { createLogger, format, transports } = require('winston');
+const path = require('path');
 
 // Import routes
 const analysisRoutes = require('./routes/analysis');
@@ -15,6 +16,9 @@ const emailRoutes = require('./routes/emailRoutes');
 
 // Create Express app
 const app = express();
+
+// Trust proxy - important for rate limiting and security when behind a proxy
+app.set('trust proxy', 1);
 
 // Create Winston logger
 const logger = createLogger({
@@ -53,6 +57,10 @@ app.use(morgan('dev')); // HTTP request logger
 app.use(express.json({ limit: '2mb' })); // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true, limit: '2mb' })); // Parse URL-encoded bodies
 app.use(compression()); // Compress responses
+
+// Serve static files from frontend
+app.use('/images', express.static(path.join(__dirname, '../frontend/public/images')));
+app.use(express.static(path.join(__dirname, '../frontend/public')));
 
 // Configure rate limiting
 const apiLimiter = rateLimit({
