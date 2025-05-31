@@ -37,9 +37,7 @@ router.post('/create-checkout', validateCheckout, async (req, res) => {
     const customerExternalIdFromRequest = req.body.customer_external_id;
     const polarEnv = resolvePolarEnv(req);
     const polarClient = getPolarClient(polarEnv);
-    const priceId = polarEnv === 'sandbox' 
-      ? process.env.POLAR_PRICE_ID_PREMIUM_ANALYSIS_SANDBOX
-      : process.env.POLAR_PRICE_ID_PREMIUM_ANALYSIS_PROD;
+    const priceId = polarClient.config.priceIds.premiumAnalysis;
 
     logger.info('Creating Polar checkout session for Premium Analysis', { email: email || 'anonymous', polarEnv, priceId });
 
@@ -341,9 +339,7 @@ router.post('/create-scrape-checkout', validateScrapeCheckout, async (req, res) 
     const { email, twitterHandle } = req.body; // numBlocks is removed from direct params
     const polarEnv = resolvePolarEnv(req);
     const polarClient = getPolarClient(polarEnv);
-    const priceId = polarEnv === 'sandbox'
-      ? process.env.POLAR_PRICE_ID_SCRAPE_PACKAGE_SANDBOX
-      : process.env.POLAR_PRICE_ID_SCRAPE_PACKAGE_PROD;
+    const priceId = polarClient.config.priceIds.scrapePackage;
     
     // The specific number of blocks/tweets this package offers should be known by the system,
     // e.g., from the product configuration or an internal mapping.

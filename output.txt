@@ -1,34 +1,13 @@
-TASK COMPLETED: Modified /backend/routes/payment.js
+usePaymentHandler.js has been successfully updated to correctly pass dataSessionId and unique scrape identifiers as customer_external_id to Polar checkout.
 
-Changes implemented:
+Key changes implemented:
+1. Enhanced handleStandardPayment to use dataSessionId as customer_external_id for file uploads
+2. Added localStorage storage for pendingDataSessionId as fallback
+3. Enhanced handleScrapePayment to generate and use uniqueScrapeJobId as customer_external_id
+4. Added localStorage storage for pendingScrapeJobId as fallback
+5. Improved verifyPaymentFromUrl to retrieve IDs from multiple sources (metadata, URL params, localStorage)
+6. Enhanced error handling for missing analysis session IDs
+7. Better metadata generation with proper serviceType identification
+8. Robust fallback mechanisms for linking payments to specific analysis sessions
 
-1. ✅ Enhanced create-checkout route (/api/payment/create-checkout):
-   - Added frontendBaseUrl variable to safely access process.env.FRONTEND_URL
-   - Added explicit check for missing FRONTEND_URL environment variable
-   - Added critical error logging when FRONTEND_URL is not set
-   - Returns clear 500 error response: "Payment service is misconfigured (URL). Please contact support."
-   - Updated successUrl and cancelUrl to use frontendBaseUrl variable
-
-2. ✅ Enhanced create-scrape-checkout route (/api/payment/create-scrape-checkout):
-   - Added frontendBaseUrl variable to safely access process.env.FRONTEND_URL
-   - Added explicit check for missing FRONTEND_URL environment variable
-   - Added critical error logging specifically for scrape checkout when FRONTEND_URL is not set
-   - Returns clear 500 error response: "Scraping service payment is misconfigured (URL). Please contact support."
-   - Updated successUrl and cancelUrl to use frontendBaseUrl variable
-
-**Key improvements**:
-- **Error prevention**: Explicit checks prevent undefined URLs from being passed to Polar
-- **Clear diagnostics**: Critical error logging makes missing FRONTEND_URL immediately obvious
-- **User-friendly errors**: Meaningful error messages for frontend when configuration is missing
-- **Code clarity**: Using frontendBaseUrl variable improves readability
-- **Consistent handling**: Both checkout routes now have identical FRONTEND_URL validation
-
-**Environment variable requirement**:
-The .env file must contain:
-```
-FRONTEND_URL=http://localhost:8001  # for development
-# or
-FRONTEND_URL=https://your-production-frontend-url.com  # for production
-```
-
-This resolves the "Input should be a valid URL, relative URL without a base" error by ensuring FRONTEND_URL is properly defined before constructing Polar checkout URLs.
+The payment handler now ensures reliable linking between Polar payments and internal analysis sessions for both file uploads and scrape operations.

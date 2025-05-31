@@ -4,17 +4,14 @@ import {
   createCheckoutSession,
   createScrapeCheckoutSession,
   verifyPaymentStatus
-} from '../services/paymentService'; // verifyPaymentStatus now returns Polar-based status
+} from '../services/paymentService';
 import { useTweetData } from '../context/TweetDataContext';
 
-/**
- * Custom hook for handling payments with Polar
- */
 const usePaymentHandler = () => {
   const navigate = useNavigate();
   const { 
     processedData, 
-    dataSessionId, 
+    dataSessionId, // This is our internal analysis session ID for uploaded files
     timeframe, 
     updatePaidStatus, 
     updateDataSource 
@@ -24,40 +21,32 @@ const usePaymentHandler = () => {
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
   
-  /**
-   * Generate metadata for the Polar checkout session
-   * @returns {Object} Metadata for the checkout session
-   */
   const generateStandardCheckoutMetadata = useCallback(() => {
-    if (!dataSessionId && !processedData) {
-      console.warn('No processed data or dataSessionId available for payment metadata');
+    // For file uploads, dataSessionId is crucial.
+    if (!dataSessionId) {
+      console.warn('No dataSessionId available for standard payment metadata. This is needed to link payment to analysis.');
+      // Fallback, though this scenario should ideally be prevented by UI flow.
       return {
         source: 'twitilytics_app_file_upload',
         timestamp: new Date().toISOString(),
-        serviceType: 'premium_analysis_file_upload'
+        serviceType: 'premium_analysis_file_upload',
+        // dataSessionId will be undefined here, which is problematic.
       };
     }
     
     return {
-      dataSessionId: dataSessionId, // Crucial for linking payment to the specific analysis session
-      tweetCount: processedData?.allTweets?.length || processedData?.tweetCount || 0,
+      dataSessionId: dataSessionId, // This is our internal analysis session ID
+      tweetCount: processedData?.allTweets?.length || processedData?.tweetCount || 0, // Use processedData from context if available
       timeframe: processedData?.timeframe || timeframe || 'all',
       timestamp: new Date().toISOString(),
-      serviceType: 'premium_analysis_file_upload' // Specific service type
+      serviceType: 'premium_analysis_file_upload'
     };
   }, [processedData, dataSessionId, timeframe]);
   
-  /**
-   * Handle standard payment initiation (Premium Analysis Report)
-   * @param {Object} options - Payment options
-   * @param {string} options.email - User's email (optional)
-   */
   const handleStandardPayment = useCallback(async ({ email } = {}) => {
-    // `processedData` should be available if user is at payment step after upload/processing
-    // Or `dataSessionId` from context if data was processed and stored server-side.
-
-    if (!processedData && !dataSessionId) {
-      setPaymentError('No data available to analyze. Please upload your tweets.js file first.');
+    // dataSessionId comes from useTweetData context, set after file upload processing by useTweetFileProcessor
+    if (!dataSessionId) {
+      setPaymentError('Analysis session not found. Please re-upload your file.');
       return;
     }
     
@@ -66,21 +55,18 @@ const usePaymentHandler = () => {
     
     try {
       const metadata = generateStandardCheckoutMetadata();
-      
-      // Ensure dataSessionId exists in metadata for customer_external_id
-      if (!metadata.dataSessionId) {
-        throw new Error('Analysis session ID is missing. Please re-upload your file.');
-      }
-
-      const { status, url, sessionId: polarSessionId } = await createCheckoutSession({
+      // customer_external_id should be our internal analysis session ID (dataSessionId)
+      // to link the Polar customer/order back to this specific analysis.
+      const { status, url, sessionId: polarCheckoutSessionId } = await createCheckoutSession({
         email,
-        customer_external_id: metadata.dataSessionId, // Use dataSessionId as the primary link for Polar
-        metadata // Send the whole metadata object as well
+        customer_external_id: dataSessionId, // Use our internal analysis session ID
+        metadata // Send the whole metadata object
       });
       
       if (status === 'success' && url) {
-        localStorage.setItem('pendingPaymentSession', polarSessionId); // Store Polar session ID
-        window.location.href = url; // Redirect to Polar checkout
+        localStorage.setItem('pendingPaymentSession', polarCheckoutSessionId);
+        localStorage.setItem('pendingDataSessionId', dataSessionId); // Store our dataSessionId too
+        window.location.href = url;
       } else {
         throw new Error('Invalid response from payment service for standard payment');
       }
@@ -90,41 +76,35 @@ const usePaymentHandler = () => {
     } finally {
       setIsProcessingPayment(false);
     }
-  }, [processedData, dataSessionId, generateStandardCheckoutMetadata]);
+  }, [dataSessionId, generateStandardCheckoutMetadata]);
 
-  /**
-   * Handle scrape payment initiation
-   * @param {Object} options - Payment options
-   * @param {string} options.email - User's email
-   * @param {string} options.twitterHandle - Twitter handle to scrape
-   * @param {number} options.numBlocks - Number of 1k-tweet blocks this package implies.
-   *                                     This is now for metadata, actual package is fixed by backend.
-   */
   const handleScrapePayment = useCallback(async ({ email, twitterHandle, numBlocks } = {}) => {
     setIsProcessingPayment(true);
     setPaymentError(null);
     
     try {
-      const uniqueScrapeId = `scrape_${twitterHandle}_${Date.now()}`; // Create a unique ID for this scrape job
+      // For scrapes, customer_external_id can be a unique ID for this specific scrape job.
+      const uniqueScrapeJobId = `scrape_${twitterHandle}_${Date.now()}`;
       const metadata = {
         twitterHandle,
-        numBlocks,
+        numBlocks, // numBlocks here defines what package the user *selected* on frontend
         serviceType: 'scrape_analysis',
         timestamp: new Date().toISOString(),
-        scrapeJobId: uniqueScrapeId // Store the unique ID also in metadata
+        scrapeJobId: uniqueScrapeJobId // Store it in metadata too for redundancy
       };
 
-      const { status, url, sessionId: polarSessionId } = await createScrapeCheckoutSession({
+      const { status, url, sessionId: polarCheckoutSessionId } = await createScrapeCheckoutSession({
         email,
-        twitterHandle, // Backend expects this for scrape
-        // numBlocks, // Backend uses fixed package, but send for metadata
-        customer_external_id: uniqueScrapeId, // Use the generated unique ID for Polar
+        twitterHandle,
+        // numBlocks is implicitly handled by backend's priceId selection for scrape packages
+        customer_external_id: uniqueScrapeJobId, // Use the generated unique ID
         metadata
       });
       
       if (status === 'success' && url) {
-        localStorage.setItem('pendingPaymentSession', polarSessionId); // Store Polar session ID
-        window.location.href = url; // Redirect to Polar checkout
+        localStorage.setItem('pendingPaymentSession', polarCheckoutSessionId);
+        localStorage.setItem('pendingScrapeJobId', uniqueScrapeJobId); // Store unique scrape ID
+        window.location.href = url;
       } else {
         throw new Error('Invalid response from payment service for scrape payment');
       }
@@ -136,20 +116,24 @@ const usePaymentHandler = () => {
     }
   }, []);
   
-  /**
-   * Verify payment status from URL parameter after Polar redirect
-   * @returns {Promise<boolean>} Whether payment was successful
-   */
   const verifyPaymentFromUrl = useCallback(async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const polarSessionId = urlParams.get('session_id'); // This is Polar's checkout session ID
+    const polarCheckoutSessionId = urlParams.get('session_id'); // This is Polar's checkout session ID
     
-    if (!polarSessionId) {
-      // Check if it's from a pending session storage, e.g. if page reloaded before redirect finished
-      const pendingSessionId = localStorage.getItem('pendingPaymentSession');
-      if (!pendingSessionId) return false;
-      // sessionId = pendingSessionId; // Use with caution, ensure it's for the current flow
-      // Better to rely on URL param from Polar redirect.
+    if (!polarCheckoutSessionId) {
+      // This handles cases where the page might be reloaded or navigated to without the session_id
+      // Try to get from localStorage if it was a pending session
+      const pendingPolarSessionId = localStorage.getItem('pendingPaymentSession');
+      if (pendingPolarSessionId) {
+          // Potentially redirect to the proper URL with session_id to trigger verification
+          // Or, if we are already on /payment/verify, proceed with pendingPolarSessionId
+          // For simplicity, if on /payment/verify and session_id is missing, it's likely an issue.
+          // console.warn("Verifying payment: session_id missing from URL, checking localStorage.");
+          // For now, strict check on URL param for /payment/verify page.
+          // FileUploadSection.jsx or other components initiate payment and redirect.
+          // PaymentVerification.jsx handles the /payment/verify route.
+          return false; 
+      }
       return false;
     }
     
@@ -157,26 +141,40 @@ const usePaymentHandler = () => {
     setPaymentError(null);
     
     try {
-      // `verifyPaymentStatus` now talks to backend which talks to Polar
-      const result = await verifyPaymentStatus(polarSessionId); 
+      const result = await verifyPaymentStatus(polarCheckoutSessionId); 
       
       if (result.status === 'success' && result.paid) {
-        updatePaidStatus(true, polarSessionId); // Update context with paid status and Polar session ID
+        updatePaidStatus(true, polarCheckoutSessionId);
         
-        // Update data source based on metadata from payment
-        if (result.metadata?.analysisType === 'scrape' || result.metadata?.serviceType === 'scrape_analysis') {
+        const metadata = result.metadata || {};
+        const serviceType = metadata.serviceType || (urlParams.get('type') === 'scrape' ? 'scrape_analysis' : 'premium_analysis_file_upload');
+        
+        if (serviceType === 'scrape_analysis') {
+          const scrapeJobId = metadata.scrapeJobId || urlParams.get('customer_external_id') || localStorage.getItem('pendingScrapeJobId');
           updateDataSource('username', { 
-            handle: result.metadata.twitterHandle, 
-            blocks: parseInt(result.metadata.numBlocks, 10),
-            paymentSessionId: polarSessionId // Store Polar session ID
+            handle: metadata.twitterHandle || urlParams.get('handle'), 
+            blocks: parseInt(metadata.numBlocks || urlParams.get('blocks'), 10),
+            paymentSessionId: polarCheckoutSessionId,
+            scrapeJobId // Link to the specific scrape job
           });
         } else { // Default to file-based analysis payment
-          updateDataSource('file', { 
-            paymentSessionId: polarSessionId, // Store Polar session ID
-            dataSessionId: result.metadata?.dataSessionId // Link to uploaded file session if present
-          });
+          // dataSessionId is our internal analysis session ID.
+          // It was passed to Polar as customer_external_id or in metadata.dataSessionId.
+          const analysisDataSessionId = metadata.dataSessionId || urlParams.get('data_session_id') || localStorage.getItem('pendingDataSessionId');
+          if (analysisDataSessionId) {
+            updateDataSource('file', { 
+              paymentSessionId: polarCheckoutSessionId,
+              dataSessionId: analysisDataSessionId 
+            });
+          } else {
+            console.error("Critical: Could not determine analysisDataSessionId after successful file payment.");
+            setPaymentError("Payment successful, but could not link to your analysis. Please contact support.");
+            return false; // Indicate verification failed to link
+          }
         }
         localStorage.removeItem('pendingPaymentSession');
+        localStorage.removeItem('pendingDataSessionId');
+        localStorage.removeItem('pendingScrapeJobId');
         return true;
       } else {
         setPaymentError(`Payment not completed. Status: ${result.paymentStatus || 'unknown'}`);
@@ -199,8 +197,8 @@ const usePaymentHandler = () => {
     isProcessingPayment,
     isVerifyingPayment,
     paymentError,
-    handleStandardPayment, // For premium report from uploaded file
-    handleScrapePayment,   // For scrape package
+    handleStandardPayment,
+    handleScrapePayment,
     verifyPaymentFromUrl,
     goToReport
   };

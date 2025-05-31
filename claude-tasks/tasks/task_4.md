@@ -1,3 +1,41 @@
+DO THESE MODIFICATIONS. GO TO THE FILES LISTED AND EXECUTE THE TASK(S) ASSIGNED.
+
+Goal: Ensure the `TweetDataContext` correctly manages and persists the `dataSessionId` (our internal analysis session ID) and that `ReportPage` can use this to load the correct data if necessary.
+
+File to Review: C:\Users\Administrator\Documents\twitilytics\frontend\src\context\TweetDataContext.jsx
+File to Review: C:\Users\Administrator\Documents\twitilytics\frontend\src\components\report\ReportPage.jsx
+
+Verification & Context:
+*   `TweetDataContext.jsx` already has `dataSessionId` state and stores/retrieves it from `localStorage`.
+*   `updateProcessedDataAndSessionId` updates this `dataSessionId`.
+*   The `rawTweetsJsContent` in the context value is aliased to `dataSessionId` for backward compatibility, which is a bit confusing but means `ReportPage.jsx`'s existing check `if (!rawTweetsJsContent && dataSource?.type !== 'scrape')` will effectively check `!dataSessionId`.
+*   `ReportPage.jsx` useEffect for data loading:
+    ```javascript
+    useEffect(() => {
+      if (dataSource?.type === 'username' && !allAnalysesContent) {
+        // ... fetches scrape analysis ...
+      }
+    }, [dataSource, allAnalysesContent, paymentSessionId, timeframe, setFullAnalyses]);
+
+    useEffect(() => {
+      // This checks if rawTweetsJsContent (which is dataSessionId from context) is missing
+      if (!rawTweetsJsContent && dataSource?.type !== 'scrape') { 
+        navigate('/', { replace: true });
+      }
+    }, [rawTweetsJsContent, dataSource, navigate]);
+    ```
+    For file uploads, after payment, `dataSource.type` will be `'file'` and `dataSource.dataSessionId` will be set by `PaymentVerification`. The `rawTweetsJsContent` (which is the context's `dataSessionId`) should also match this. If `ReportPage.jsx` loads and `rawTweetsJsContent` (context's `dataSessionId`) is null/empty, it redirects. This is generally okay. The main data (`processedData`) is set by `FileUploadSection` initially, and this data should persist in context if `PaymentVerification` correctly sets the `dataSource` and `isPaidUser` flags without clearing `processedData` unnecessarily.
+
+Proposed Change for `ReportPage.jsx` (Minor Refinement for Clarity):
+To make the data loading logic in `ReportPage.jsx` more explicit for file uploads after payment, we can add a check. If the `dataSource` indicates a file upload and its `dataSessionId` doesn't match the one in context (or if `processedData` is missing for that session), it implies data might need to be re-fetched from the server using the `dataSessionId`.
+
+File to Edit: C:\Users\Administrator\Documents\twitilytics\frontend\src\components\report\ReportPage.jsx
+
+Instructions:
+Add a useEffect to potentially re-fetch session data if `dataSource` indicates a paid file session and local context seems out of sync. (This assumes an endpoint like `/api/analyze/session/:sessionId` exists, which it does).
+
+```javascript
+// File: C:\Users\Administrator\Documents\twitilytics\frontend\src\components\report\ReportPage.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTweetData } from '../../context/TweetDataContext';
@@ -324,3 +362,25 @@ const ReportPage = () => {
 };
 
 export default ReportPage;
+```
+
+Reasoning:
+*   The `useEffect` hook in `ReportPage.jsx` is refined to handle data loading for both `'username'` (scrape) and `'file'` (upload) `dataSource` types.
+*   For file uploads, if the `dataSessionId` from the `dataSource` (which comes from payment verification URL) doesn't match the `dataSessionId` currently in the `TweetDataContext`, it fetches the session data from the backend. This ensures that if a user pays and returns, the report page loads the correct, paid-for session data.
+*   `handleTimeframeChange` is updated to re-fetch scraped analysis if the source is `'username'`. For file uploads, individual analysis components re-fetch data based on the new timeframe using the `dataSessionId` (via `rawTweetsJsContent` alias).
+*   PDF generation logic in `ReportPage.jsx` is improved to make all report sections temporarily visible before generating the PDF and to replace canvases with images, similar to common practices for `html2pdf.js`.
+*   Error handling and loading states in `ReportPage.jsx` are made more robust.
+INSTRUCTIONS FOR CLAUDE (Non-Interactive Execution):
+The task described above is a single, complete unit of work.
+If this task involves generating code or a specific file output, save that primary output to a file named 'output.txt' in the current working directory.
+Execute this task non-interactively. Do not ask for permissions or confirmation to execute any part of it, including shell commands or file modifications.
+Upon successful completion of all aspects of this task (including saving 'output.txt' if applicable), and only then, respond with the exact string "<task_completion_signal>Task Complete</task_completion_signal>" on a new line and nothing else. Do not add any other text, explanation, or formatting before or after "<task_completion_signal>Task Complete</task_completion_signal>".
+If you encounter an irrecoverable error that prevents you from completing the task as described, provide a concise error message explaining the failure instead of "<task_completion_signal>Task Complete</task_completion_signal>".
+
+<critical_instructions>
+Always put Task Complete on it's own line in the terminal output. Never add any other text, explanation, grammar, or formatting before or after the task completion signal.
+</critical_instructions>
+
+
+---
+<task_completion_signal>Task Complete</task_completion_signal>
