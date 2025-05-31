@@ -1,0 +1,5 @@
+[33m99100db[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m [Gemini Error: Rate limit exceeded. Please wait a moment before trying again.]
+[33m4cbf1d3[m[33m ([m[1;31morigin/main[m[33m)[m Disable HMR and silence client logs for frontend dev script
+[33m5c6554d[m Configure production build and static serving
+[33m3590805[m Update frontend dev script to use WDS_SOCKET_URL
+[33me0c53de[m Clean up unused frontend code and configure dev server

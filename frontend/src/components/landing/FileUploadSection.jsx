@@ -43,7 +43,7 @@ const FileUploadSection = () => {
     progress,
     handleFileSelect,
     handleFileDrop,
-    updateTimeframe: updateFileTimeframe,
+    updateTimeframe: updateFileProcessorTimeframeHook,
     reset
   } = useTweetFileProcessor({
     defaultTimeframe: 'all',
@@ -128,7 +128,7 @@ const FileUploadSection = () => {
   // Handle timeframe change
   const handleTimeframeChange = (event) => {
     const newTimeframe = event.target.value;
-    updateFileTimeframe(newTimeframe);
+    updateFileProcessorTimeframeHook(newTimeframe);
     updateTimeframe(newTimeframe);
   };
   

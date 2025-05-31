@@ -754,73 +754,107 @@ router.post('/scrape-and-analyze', [
  * @desc Upload and process tweet file on server, return session ID
  */
 router.post('/upload-and-process', upload.single('tweetFile'), async (req, res) => {
+  logger.info('[/api/analyze/upload-and-process] Attempting to process uploaded file.');
+
   try {
-    const { timeframe = 'all', isPaidUser = false } = req.body;
-    
+    const { timeframe = 'all' } = req.body;
+    // FormData sends boolean as strings 'true'/'false', so parse it correctly.
+    const isPaidUser = req.body.isPaidUser === 'true' || req.body.isPaidUser === true;
+
+    logger.debug('[/api/analyze/upload-and-process] Request body params:', { timeframe, isPaidUser_raw: req.body.isPaidUser, isPaidUser_parsed: isPaidUser });
+
     if (!req.file) {
+      logger.warn('[/api/analyze/upload-and-process] No file uploaded by client.');
       return res.status(400).json({ 
         status: 'error', 
         message: 'No file uploaded' 
       });
     }
+    logger.info('[/api/analyze/upload-and-process] File received from client.', { 
+      originalname: req.file.originalname, 
+      size: req.file.size,
+      mimetype: req.file.mimetype 
+    });
 
     // Validate file type
     if (!req.file.originalname.endsWith('.js')) {
+      logger.warn('[/api/analyze/upload-and-process] Invalid file type detected.', { filename: req.file.originalname });
       return res.status(400).json({ 
         status: 'error', 
         message: 'Invalid file type. Please upload a tweets.js file.' 
       });
     }
 
-    // Read file content
-    const fileContent = req.file.buffer.toString('utf8');
-    
     // Validate file size (prevent extremely large files)
     const maxSize = 100 * 1024 * 1024; // 100MB limit
-    if (fileContent.length > maxSize) {
+    if (req.file.size > maxSize) { // MODIFIED to use req.file.size
+      logger.warn('[/api/analyze/upload-and-process] File too large.', { 
+        filename: req.file.originalname, 
+        size: req.file.size, 
+        maxSize 
+      });
       return res.status(400).json({ 
         status: 'error', 
-        message: 'File too large. Please ensure your tweets.js file is under 100MB.' 
+        message: `File too large (${(req.file.size / (1024*1024)).toFixed(2)}MB). Please ensure your tweets.js file is under 100MB.`
       });
     }
 
+    // Read file content
+    const fileContent = req.file.buffer.toString('utf8');
+    logger.debug('[/api/analyze/upload-and-process] File content read from buffer.');
+
     // Parse and process the tweet data
+    logger.info('[/api/analyze/upload-and-process] Starting parseTweetsJS operation.');
     const rawTweetData = parseTweetsJS(fileContent);
+    logger.info('[/api/analyze/upload-and-process] Completed parseTweetsJS operation.', { rawTweetCount: rawTweetData.length });
+
+    logger.info('[/api/analyze/upload-and-process] Starting processTweetData operation.');
     const processedData = processTweetData(rawTweetData, timeframe, isPaidUser);
+    logger.info('[/api/analyze/upload-and-process] Completed processTweetData operation.', { 
+      processedTweetCount: processedData.allTweets?.length || 0,
+      originalTweets: processedData.originalTweets?.length || 0,
+      replies: processedData.replies?.length || 0
+    });
 
     // Generate a unique session ID using the session manager
     const sessionId = sessionManager.constructor.generateSessionId();
+    logger.debug('[/api/analyze/upload-and-process] Generated new session ID:', { sessionId });
     
     // Store the session data using the session manager
+    logger.info('[/api/analyze/upload-and-process] Attempting to store session data.');
     sessionManager.storeSession(sessionId, {
-      rawContent: fileContent,
+      rawContent: fileContent, 
       processedData,
       timeframe,
-      isPaidUser,
+      isPaidUser, // Parsed boolean value
       fileName: req.file.originalname
     });
+    logger.info('[/api/analyze/upload-and-process] Session data stored successfully.', { sessionId });
 
-    logger.info('File uploaded and processed successfully', { 
-      sessionId, 
-      fileName: req.file.originalname,
-      tweetCount: processedData.allTweets?.length || 0,
-      timeframe,
-      isPaidUser
-    });
-
-    res.json({
+    return res.json({ // Added return
       status: 'success',
       sessionId,
-      processedData,
+      processedData, 
       fileName: req.file.originalname,
       tweetCount: processedData.allTweets?.length || 0
     });
 
   } catch (error) {
-    logger.error('Error in upload-and-process:', error);
-    res.status(500).json({ 
+    logger.error('[/api/analyze/upload-and-process] Critical error during file processing.', { 
+      errorMessage: error.message, 
+      errorName: error.name,
+      // errorStack: error.stack, // Stack can be very verbose, log if needed for deep debug
+      fileName: req.file ? req.file.originalname : 'N/A',
+      fileSize: req.file ? req.file.size : 'N/A'
+    });
+    
+    const statusCode = error.statusCode || 500; 
+    const responseMessage = error.message || 'Failed to process tweet file. Please ensure it is a valid tweets.js file and try again.';
+    
+    return res.status(statusCode).json({
       status: 'error', 
-      message: error.message || 'Failed to process tweet file' 
+      message: responseMessage,
+      ...(process.env.NODE_ENV === 'development' && { errorDetails: { name: error.name, message: error.message } })
     });
   }
 });
