@@ -29,28 +29,23 @@ const usePaymentHandler = () => {
    * @returns {Object} Metadata for the checkout session
    */
   const generateStandardCheckoutMetadata = useCallback(() => {
-    // This function was used to store processedData in localStorage and link via dataKey.
-    // With server-side sessions for tweet data (useTweetFileProcessor hook changes),
-    // the primary link might be the server-side dataSessionId.
-
-    if (!dataSessionId && !processedData) { // Check both, processedData can be from direct analysis
+    if (!dataSessionId && !processedData) {
       console.warn('No processed data or dataSessionId available for payment metadata');
-      // Fallback or throw error if critical
       return {
-        source: 'twitilytics_app',
+        source: 'twitilytics_app_file_upload',
         timestamp: new Date().toISOString(),
+        serviceType: 'premium_analysis_file_upload'
       };
     }
     
     return {
-      // dataKey: dataKey, // If still using localStorage link for some reason
-      dataSessionId: dataSessionId, // Link to server-side stored tweet data
+      dataSessionId: dataSessionId, // Crucial for linking payment to the specific analysis session
       tweetCount: processedData?.allTweets?.length || processedData?.tweetCount || 0,
       timeframe: processedData?.timeframe || timeframe || 'all',
       timestamp: new Date().toISOString(),
-      serviceType: 'premium_analysis_report'
+      serviceType: 'premium_analysis_file_upload' // Specific service type
     };
-  }, [processedData, dataSessionId, timeframe]); // Re-run if processedData changes in context
+  }, [processedData, dataSessionId, timeframe]);
   
   /**
    * Handle standard payment initiation (Premium Analysis Report)
@@ -71,12 +66,16 @@ const usePaymentHandler = () => {
     
     try {
       const metadata = generateStandardCheckoutMetadata();
-      // Add userId to metadata if available, for Polar's customer_external_id
-      // metadata.userId = user?.id; // Example if you have a user system
+      
+      // Ensure dataSessionId exists in metadata for customer_external_id
+      if (!metadata.dataSessionId) {
+        throw new Error('Analysis session ID is missing. Please re-upload your file.');
+      }
 
-      const { status, url, sessionId: polarSessionId } = await createCheckoutSession({ // This now calls backend which uses Polar
+      const { status, url, sessionId: polarSessionId } = await createCheckoutSession({
         email,
-        metadata
+        customer_external_id: metadata.dataSessionId, // Use dataSessionId as the primary link for Polar
+        metadata // Send the whole metadata object as well
       });
       
       if (status === 'success' && url) {
@@ -106,20 +105,20 @@ const usePaymentHandler = () => {
     setPaymentError(null);
     
     try {
-      // Metadata for Polar
+      const uniqueScrapeId = `scrape_${twitterHandle}_${Date.now()}`; // Create a unique ID for this scrape job
       const metadata = {
         twitterHandle,
-        numBlocks, // Number of blocks this package represents
+        numBlocks,
         serviceType: 'scrape_analysis',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        scrapeJobId: uniqueScrapeId // Store the unique ID also in metadata
       };
 
-      // `numBlocks` here might be used by frontend to inform user, but backend uses a fixed package Price ID.
-      // The call to createScrapeCheckoutSession now triggers Polar checkout for that fixed package.
       const { status, url, sessionId: polarSessionId } = await createScrapeCheckoutSession({
         email,
-        twitterHandle, // For backend logic
-        // numBlocks, // Not used by backend to select price, but can be in metadata
+        twitterHandle, // Backend expects this for scrape
+        // numBlocks, // Backend uses fixed package, but send for metadata
+        customer_external_id: uniqueScrapeId, // Use the generated unique ID for Polar
         metadata
       });
       

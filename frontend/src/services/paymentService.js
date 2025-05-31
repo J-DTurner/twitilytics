@@ -22,8 +22,38 @@ export const createCheckoutSession = async (data) => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to create checkout session');
+      let errorMessage = `Failed to create checkout session (Status: ${response.status})`; // Default message
+      try {
+        const errorData = await response.json();
+        // Check for express-validator format first
+        if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+          errorMessage = errorData.errors.map(err => err.msg || 'Validation error').join('; ');
+        } 
+        // Then check for a single message from our backend (which might be a formatted Polar error)
+        else if (errorData.message && typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        } 
+        // Fallback for other Polar error structures if backend didn't format it (less likely now)
+        else if (errorData.detail && typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (errorData.detail && Array.isArray(errorData.detail) && errorData.detail.length > 0) {
+           errorMessage = errorData.detail.map(err => (err.msg || JSON.stringify(err))).join('; ');
+        } else {
+           // If parsing JSON works but no clear message field, try to stringify
+           errorMessage = JSON.stringify(errorData);
+        }
+      } catch (parseError) {
+        // If response is not JSON, try to get raw text
+        try {
+            const errorText = await response.text();
+            if (errorText && errorText.length < 200) { // Avoid huge HTML error pages
+                 errorMessage = errorText;
+            }
+        } catch (textParseError) {
+            // Keep the default HTTP status error message
+        }
+      }
+      throw new Error(errorMessage);
     }
     
     return await response.json(); // Expected: { status: 'success', sessionId: 'polar_session_id', url: 'polar_checkout_url' }
@@ -58,8 +88,38 @@ export const createScrapeCheckoutSession = async (data) => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to create scrape checkout session');
+      let errorMessage = `Failed to create checkout session (Status: ${response.status})`; // Default message
+      try {
+        const errorData = await response.json();
+        // Check for express-validator format first
+        if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+          errorMessage = errorData.errors.map(err => err.msg || 'Validation error').join('; ');
+        } 
+        // Then check for a single message from our backend (which might be a formatted Polar error)
+        else if (errorData.message && typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        } 
+        // Fallback for other Polar error structures if backend didn't format it (less likely now)
+        else if (errorData.detail && typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (errorData.detail && Array.isArray(errorData.detail) && errorData.detail.length > 0) {
+           errorMessage = errorData.detail.map(err => (err.msg || JSON.stringify(err))).join('; ');
+        } else {
+           // If parsing JSON works but no clear message field, try to stringify
+           errorMessage = JSON.stringify(errorData);
+        }
+      } catch (parseError) {
+        // If response is not JSON, try to get raw text
+        try {
+            const errorText = await response.text();
+            if (errorText && errorText.length < 200) { // Avoid huge HTML error pages
+                 errorMessage = errorText;
+            }
+        } catch (textParseError) {
+            // Keep the default HTTP status error message
+        }
+      }
+      throw new Error(errorMessage);
     }
     
     return await response.json(); // Expected: { status: 'success', sessionId: 'polar_session_id', url: 'polar_checkout_url' }

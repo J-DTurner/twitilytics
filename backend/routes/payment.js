@@ -13,8 +13,8 @@ const { makePolarConfig } = require('../utils/polar/polarConfig');
  * Data validation middleware for checkout session
  */
 const validateCheckout = [
-  body('email').optional().isEmail().withMessage('Valid email is required'),
-  body('metadata').optional().isObject().withMessage('Metadata must be an object'),
+  body('email').optional({ checkFalsy: true }).isEmail().withMessage('If provided, email must be a valid email address'),
+  body('metadata').optional({ checkFalsy: true }).isObject().withMessage('If provided, metadata must be an object'),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -34,6 +34,7 @@ const validateCheckout = [
 router.post('/create-checkout', validateCheckout, async (req, res) => {
   try {
     const { email, metadata = {} } = req.body;
+    const customerExternalIdFromRequest = req.body.customer_external_id;
     const polarEnv = resolvePolarEnv(req);
     const polarClient = getPolarClient(polarEnv);
     const priceId = polarEnv === 'sandbox' 
@@ -55,11 +56,15 @@ router.post('/create-checkout', validateCheckout, async (req, res) => {
       product_price_id: priceId,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      customer_email: email || undefined, // Polar might require email or allow anonymous
-      customer_external_id: metadata.userId || metadata.dataKey || undefined, // Link to your internal user/session
+      customer_email: (email && email.trim() !== '') ? email.trim() : undefined,
+      customer_external_id: customerExternalIdFromRequest || metadata.dataSessionId || undefined,
       metadata: {
-        ...metadata,
-        twitilyticsService: 'premium_analysis',
+        // Ensure dataSessionId is also in metadata for explicit tracking if customer_external_id gets used for something else by Polar internally
+        dataSessionId: metadata.dataSessionId,
+        serviceType: metadata.serviceType || 'premium_analysis_file_upload',
+        // Copy other relevant metadata passed from frontend
+        ...(metadata.tweetCount && { tweetCount: metadata.tweetCount.toString() }),
+        ...(metadata.timeframe && { timeframe: metadata.timeframe }),
         timestamp: new Date().toISOString(),
       }
     };
@@ -95,26 +100,45 @@ const polarWebhookHandler = (polarEnv) => async (event, res) => {
 
   // Handle the event based on its type
   switch (event.type) {
-    case 'order.paid': { // Equivalent to Stripe's checkout.session.completed
-      const order = event.data; // Polar order payload
-      logger.info(`[Polar Webhook - ${polarEnv}] Order paid`, { 
+    case 'order.paid': {
+      const order = event.data;
+      // Try to get our analysis session identifier from common places Polar might store/forward it
+      const analysisSessionId = order.customer?.external_id || // If we set it as customer_external_id during checkout
+                                order.metadata?.dataSessionId ||    // If we stored it in metadata.dataSessionId
+                                order.metadata?.analysis_session_id || // If we used analysis_session_id in metadata
+                                order.checkout?.customer_external_id; // From the associated checkout session
+
+      const checkoutId = order.checkout_id || order.checkout?.id;
+
+      logger.info(`[Polar Webhook - ${polarEnv}] Order paid successfully.`, {
         orderId: order.id,
-        customerEmail: order.customer_email || order.customer?.email,
-        customerExternalId: order.customer_external_id || order.customer?.external_id,
-        metadata: order.metadata
+        checkoutId: checkoutId,
+        polarCustomerId: order.customer_id, // Polar's internal customer ID
+        customerEmail: order.customer?.email || order.checkout?.customer_email,
+        analysisSessionId: analysisSessionId, // This is our key identifier
+        totalAmount: order.total_amount,
+        currency: order.currency,
+        paidAt: order.paid_at || new Date().toISOString(), // Polar might provide paid_at
+        metadataFromOrder: order.metadata, // Log all metadata received with the order
+        // Log line items to understand what was purchased
+        items: order.items?.map(item => ({ 
+            product_id: item.product_id, 
+            product_price_id: item.product_price_id, 
+            label: item.label, 
+            amount: item.amount 
+        }))
       });
-      
-      // Store in database that this user/session has paid
-      // For now, we'll just log it as we don't have DB connected yet
-      const customerExternalId = order.customer_external_id || order.customer?.external_id || order.metadata?.userId || order.metadata?.dataKey;
-      if (customerExternalId) {
-        // In a real implementation, update user record in database
-        // await updateUserPremiumStatus(customerExternalId, true, order.id);
-        logger.info(`[Polar Webhook - ${polarEnv}] User/Session marked as paid`, { customerExternalId: customerExternalId, polarOrderId: order.id });
+
+      if (analysisSessionId) {
+        // In a stateful application with a database, you would:
+        // 1. Find the analysis session record using `analysisSessionId`.
+        // 2. Mark this session as 'paid'.
+        // 3. Store the `order.id` from Polar for reconciliation.
+        // Example: await db.collection('analysis_sessions').doc(analysisSessionId).update({ status: 'paid', polarOrderId: order.id, paidAt: new Date() });
+        logger.info(`[Polar Webhook - ${polarEnv}] Payment confirmed for analysis session: ${analysisSessionId}. Polar Order ID: ${order.id}.`);
+        // Any further backend actions like sending a confirmation email (if not handled by Polar/frontend) would go here.
       } else {
-        // For anonymous users, this might be harder to track back without a persistent ID.
-        // Checkout ID could be used if stored on frontend and sent back, but webhook is preferred.
-        logger.warn(`[Polar Webhook - ${polarEnv}] Anonymous user order paid, but no customerExternalId found. Tracking by Polar Order ID.`, { polarOrderId: order.id });
+        logger.warn(`[Polar Webhook - ${polarEnv}] Order ${order.id} paid, but could not identify a specific analysisSessionId from customer_external_id or metadata. Checkout ID: ${checkoutId}. Manual reconciliation might be needed if this session was expected to be linked.`);
       }
       break;
     }

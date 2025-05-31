@@ -57,8 +57,20 @@ class HttpClient {
           data?.detail || 'Polar authentication failed. Please check your access token.'
         );
       }
-      const message = data?.detail || data?.message || 'Polar API Error';
-      throw new PolarAPIError(message, status, data);
+      let detailedMessage = 'Polar API Error';
+      const errorDetail = data?.detail; // This is often where Polar puts validation errors
+
+      if (Array.isArray(errorDetail)) {
+        detailedMessage = errorDetail.map(err => {
+          const loc = err.loc && Array.isArray(err.loc) ? err.loc.join(' -> ') : 'field';
+          return `${loc}: ${err.msg} (type: ${err.type})`;
+        }).join('; ');
+      } else if (typeof errorDetail === 'string') {
+        detailedMessage = errorDetail;
+      } else if (data?.message && typeof data.message === 'string') { // Fallback to a general message field
+        detailedMessage = data.message;
+      }
+      throw new PolarAPIError(detailedMessage, status, data);
     } else if (error.request) {
       logger.error('[Polar HTTP] No response received from Polar server', { requestUrl: error.config?.url, requestData: error.request });
       throw new PolarError('No response received from Polar server');
