@@ -4,21 +4,26 @@ const logger = require('../../logger');
 class CheckoutsAPI {
   constructor(config, http) {
     this.http = http || new HttpClient(config);
-    this.config = config; // Store config for later use if needed
+    this.config = config;
   }
 
   async create(params) {
-    logger.info('[Polar Checkouts] create called with params:', params);
+    logger.info('[Polar Checkouts] create called with params (SDK-aligned):', params);
+    
     const payload = {
-      product_price_id: params.product_price_id,
+      products: [params.product_price_id], // Key change: Use 'products' array
       success_url: params.success_url,
       cancel_url: params.cancel_url ?? params.success_url,
       customer_email: params.customer_email,
-      customer_external_id: params.customer_external_id, // For linking to your user ID
+      customer_external_id: params.customer_external_id,
       metadata: params.metadata,
-      // allow_discount_codes: params.allow_discount_codes, // Optional
+      allow_discount_codes: params.allow_discount_codes, 
     };
-    logger.debug('[Polar Checkouts] Sending payload to POST /v1/checkouts:', payload);
+
+    // Remove undefined keys from payload to prevent sending them
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
+    logger.debug('[Polar Checkouts] Sending payload to POST /v1/checkouts (SDK-aligned):', payload);
     const response = await this.http.post("/v1/checkouts", payload);
     logger.info('[Polar Checkouts] create succeeded', { checkoutId: response.id });
     return response;

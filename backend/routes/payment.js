@@ -64,6 +64,7 @@ router.post('/create-checkout', validateCheckout, async (req, res) => {
       cancel_url: cancelUrl,
       customer_email: (email && email.trim() !== '') ? email.trim() : undefined,
       customer_external_id: customerExternalIdFromRequest || metadata.dataSessionId || undefined,
+      allow_discount_codes: true,
       metadata: {
         // Ensure dataSessionId is also in metadata for explicit tracking if customer_external_id gets used for something else by Polar internally
         dataSessionId: metadata.dataSessionId,
@@ -372,6 +373,7 @@ router.post('/create-scrape-checkout', validateScrapeCheckout, async (req, res) 
       cancel_url: cancelUrl,
       customer_email: email || undefined,
       customer_external_id: `scrape_${twitterHandle}_${Date.now()}`, // Unique ID for this scrape job
+      allow_discount_codes: true,
       metadata: { 
         analysisType: 'scrape', 
         twitterHandle, 
