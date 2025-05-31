@@ -1,28 +1,34 @@
-TASK COMPLETED: Reviewed PaymentVerification.jsx and TweetDataContext.jsx
+TASK COMPLETED: Modified /backend/routes/payment.js
 
-Assessment of both files:
+Changes implemented:
 
-1. ✅ **PaymentVerification.jsx**:
-   - Already correctly configured for Polar payment system
-   - Properly retrieves session_id from URL (Polar checkout session ID)
-   - Calls verifyPaymentStatus(sessionId) which communicates with backend
-   - Correctly updates paid status with updatePaidStatus(true, sessionId)
-   - Properly handles both file upload and scrape payment flows via metadata analysis
-   - updateDataSource calls are appropriate for linking payment to analysis type
-   - No changes required - component is already properly structured for single payment flow
+1. ✅ Enhanced create-checkout route (/api/payment/create-checkout):
+   - Added frontendBaseUrl variable to safely access process.env.FRONTEND_URL
+   - Added explicit check for missing FRONTEND_URL environment variable
+   - Added critical error logging when FRONTEND_URL is not set
+   - Returns clear 500 error response: "Payment service is misconfigured (URL). Please contact support."
+   - Updated successUrl and cancelUrl to use frontendBaseUrl variable
 
-2. ✅ **TweetDataContext.jsx**:
-   - No credit-related states or functions found (userCredits, updateUserCredits, etc.)
-   - Contains only appropriate payment states: isPaidUser and paymentSessionId
-   - updatePaidStatus function correctly manages single payment status
-   - Context is properly structured for managing paid state of current analysis
-   - No credit-related logic to remove - already clean
+2. ✅ Enhanced create-scrape-checkout route (/api/payment/create-scrape-checkout):
+   - Added frontendBaseUrl variable to safely access process.env.FRONTEND_URL
+   - Added explicit check for missing FRONTEND_URL environment variable
+   - Added critical error logging specifically for scrape checkout when FRONTEND_URL is not set
+   - Returns clear 500 error response: "Scraping service payment is misconfigured (URL). Please contact support."
+   - Updated successUrl and cancelUrl to use frontendBaseUrl variable
 
-**Key findings**:
-- Both components are already correctly implemented for Polar's single payment model
-- No credit system remnants found that need removal
-- Payment verification flow properly links Polar session IDs to analysis sessions
-- Context state management is appropriate for single payment per analysis model
-- Frontend responsibility correctly focused on setting isPaidUser flag for current analysis
+**Key improvements**:
+- **Error prevention**: Explicit checks prevent undefined URLs from being passed to Polar
+- **Clear diagnostics**: Critical error logging makes missing FRONTEND_URL immediately obvious
+- **User-friendly errors**: Meaningful error messages for frontend when configuration is missing
+- **Code clarity**: Using frontendBaseUrl variable improves readability
+- **Consistent handling**: Both checkout routes now have identical FRONTEND_URL validation
 
-**Result**: No code modifications required - both files are already properly configured for the Polar payment system without any credit-related logic.
+**Environment variable requirement**:
+The .env file must contain:
+```
+FRONTEND_URL=http://localhost:8001  # for development
+# or
+FRONTEND_URL=https://your-production-frontend-url.com  # for production
+```
+
+This resolves the "Input should be a valid URL, relative URL without a base" error by ensuring FRONTEND_URL is properly defined before constructing Polar checkout URLs.

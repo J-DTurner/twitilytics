@@ -48,9 +48,17 @@ router.post('/create-checkout', validateCheckout, async (req, res) => {
       return res.status(500).json({ status: 'error', message: 'Payment service is not configured correctly (premium).' });
     }
 
-    // Create Polar checkout session
-    const successUrl = `${process.env.FRONTEND_URL}/report?session_id={CHECKOUT_SESSION_ID}&source=polar`;
-    const cancelUrl = `${process.env.FRONTEND_URL}/?payment_cancelled=true`;
+    const frontendBaseUrl = process.env.FRONTEND_URL;
+    if (!frontendBaseUrl) {
+      logger.error('CRITICAL: FRONTEND_URL environment variable is not set!');
+      return res.status(500).json({ 
+        status: 'error', 
+        message: 'Payment service is misconfigured (URL). Please contact support.' 
+      });
+    }
+
+    const successUrl = `${frontendBaseUrl}/report?session_id={CHECKOUT_SESSION_ID}&source=polar`;
+    const cancelUrl = `${frontendBaseUrl}/?payment_cancelled=true`;
     
     const polarCheckoutParams = {
       product_price_id: priceId,
@@ -350,8 +358,17 @@ router.post('/create-scrape-checkout', validateScrapeCheckout, async (req, res) 
     
     logger.info('Creating Polar scrape checkout session', { email, twitterHandle, polarEnv, priceId });
 
-    const successUrl = `${process.env.FRONTEND_URL}/report?session_id={CHECKOUT_SESSION_ID}&type=scrape&handle=${encodeURIComponent(twitterHandle)}&blocks=${numBlocksImpliedByPackage}&source=polar`;
-    const cancelUrl = `${process.env.FRONTEND_URL}/?payment_cancelled=true`;
+    const frontendBaseUrl = process.env.FRONTEND_URL;
+    if (!frontendBaseUrl) {
+      logger.error('CRITICAL: FRONTEND_URL environment variable is not set for scrape checkout!');
+      return res.status(500).json({ 
+        status: 'error', 
+        message: 'Scraping service payment is misconfigured (URL). Please contact support.' 
+      });
+    }
+
+    const successUrl = `${frontendBaseUrl}/report?session_id={CHECKOUT_SESSION_ID}&type=scrape&handle=${encodeURIComponent(twitterHandle)}&blocks=${numBlocksImpliedByPackage}&source=polar`;
+    const cancelUrl = `${frontendBaseUrl}/?payment_cancelled=true`;
 
     const polarCheckoutParams = {
       product_price_id: priceId,
