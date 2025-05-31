@@ -9,9 +9,11 @@ build = "npm run build"
 run = "npm start"
 
 [[ports]]
+# Backend server port (Express)
 localPort = 3001
 externalPort = 3001
 
 [[ports]]
+# Frontend Vite dev server port
 localPort = 8001
 externalPort = 80
