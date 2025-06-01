@@ -46,7 +46,11 @@ const PaymentVerification = () => {
     if (polarCheckoutSessionId === '{CHECKOUT_SESSION_ID}') {
         console.error('[PaymentVerification] Critical Error: Received literal placeholder "{CHECKOUT_SESSION_ID}" as session_id from URL.');
         setStatusMessage('Error: Invalid session identifier from payment provider.');
-        setError('Received a placeholder session ID. Payment verification cannot proceed. This often indicates an issue with the payment provider redirect setup or that the redirect happened before the placeholder was replaced. Please contact support if your payment was successful.');
+        setError(
+            `Error: Invalid session identifier from payment provider. We received a placeholder value ('${polarCheckoutSessionId}') instead of an actual payment session ID. ` +
+            `This can happen due to a temporary issue with the payment provider's redirect or if the redirect occurred too quickly. ` +
+            `If your payment was successful, please contact support and provide them with this full URL: ${window.location.href}`
+        );
         setVerifying(false);
         // setTimeout(() => navigate('/'), 7000); // Optional: redirect after a longer delay for user to read message
         return;

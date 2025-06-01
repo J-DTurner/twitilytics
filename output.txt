@@ -1,32 +1,14 @@
-Task completed successfully. Enhanced PaymentVerification.jsx with comprehensive logging to detect if the literal placeholder {CHECKOUT_SESSION_ID} is being received from Polar's redirect.
+Task completed successfully. Modified the error message in PaymentVerification.jsx when the literal placeholder {CHECKOUT_SESSION_ID} is detected to provide more specific guidance to the user.
 
-Changes made:
-1. Added console.group logging block at the beginning of useEffect to capture all URL parameters:
-   - Raw polarCheckoutSessionId from URL
-   - Source Type from URL  
-   - Analysis Type from URL
-   - Analysis Session ID (data_session_id) from URL
-   - Customer External ID (customer_external_id) from URL
-   - All Search Params Object (complete overview)
+The error message was updated from:
+"Received a placeholder session ID. Payment verification cannot proceed. This often indicates an issue with the payment provider redirect setup or that the redirect happened before the placeholder was replaced. Please contact support if your payment was successful."
 
-2. Added explicit check for literal placeholder string:
-   - Detects if polarCheckoutSessionId === '{CHECKOUT_SESSION_ID}'
-   - Logs critical error to console when placeholder is detected
-   - Sets informative error message explaining the issue and advising user to contact support
-   - Stops verification process early to prevent further errors
+To:
+"Error: Invalid session identifier from payment provider. We received a placeholder value ('{CHECKOUT_SESSION_ID}') instead of an actual payment session ID. This can happen due to a temporary issue with the payment provider's redirect or if the redirect occurred too quickly. If your payment was successful, please contact support and provide them with this full URL: ${window.location.href}"
 
-3. Enhanced verification flow logging:
-   - Logs backend verification result
-   - Logs metadata from Polar on successful payment
-   - Logs determined serviceType
-   - Logs scrape analysis details (handle, blocks, scrapeJobID)
-   - Logs file analysis details (dataSessionID)
-   - Enhanced error logging with searchParams context
-   - Logs localStorage cleanup actions
+The enhanced error message now includes:
+1. Clear explanation of the issue (placeholder value received instead of actual session ID)
+2. Potential causes (temporary issue with payment provider redirect or redirect occurred too quickly)
+3. Instructions for user to contact support with the full URL containing all parameters
 
-4. Improved error display:
-   - Added prominent error message display in JSX
-   - Enhanced error states with detailed user-facing messages
-   - Includes Polar Session ID in error messages for support
-
-The enhanced logging will clearly identify whether the frontend is receiving the literal placeholder from Polar's redirect and provide comprehensive debugging information for the payment verification flow.
+This enhanced error message will help users understand the issue and provide support teams with the necessary debugging information including the full URL with the unreplaced placeholder and other parameters.
