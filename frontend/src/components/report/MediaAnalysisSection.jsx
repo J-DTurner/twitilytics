@@ -9,39 +9,75 @@ import { getMediaAnalysis as fetchMediaAnalysis } from '../../services/analysisS
  * insights about the user's media posts (images, videos, etc.).
  * It's a premium feature that requires a paid account.
  */
-const MediaAnalysisSection = () => {
-  const { rawTweetsJsContent, isPaidUser, timeframe } = useTweetData();
+const MediaAnalysisSection = ({ initialRawContent }) => {
+  const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent } = useTweetData();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analysisHtml, setAnalysisHtml] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   
-  useEffect(() => {
-    if (!rawTweetsJsContent) return;
+useEffect(() => {
+  if (dataSource?.type === 'scrape') {
+    setAnalysisHtml(allAnalysesContent?.mediaAnalysis || '');
+    setLoading(false);
+    setError(null);
+    setIsLocked(false); // Scrapes are inherently "paid"
+  } else if (dataSource?.type === 'file') {
+    if (initialRawContent) { // Use the prop
+      setLoading(true);
+      setError(null);
+      setIsLocked(false);
+      fetchMediaAnalysis(initialRawContent, isPaidUser, timeframe) // Call service with actual raw content
+        .then(result => {
+          if (result.requiresUpgrade && !isPaidUser) { // Only lock if actually not paid
+            setIsLocked(true);
+          }
+          setAnalysisHtml(result.analysis);
+        })
+        .catch(err => {
+          setError(err.message || 'Failed to generate media analysis.');
+          setAnalysisHtml('');
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(true); // Waiting for ReportPage to provide raw content
+    }
+  } else {
+    setLoading(false);
+    // setError("Appropriate data source not available for analysis."); // Or rely on ReportPage error
+  }
+// Add initialRawContent to the dependency array
+}, [dataSource, allAnalysesContent, initialRawContent, isPaidUser, timeframe]);
+  
+const handleRetry = () => {
+  if (dataSource?.type === 'file') {
+    if (!initialRawContent) { // Check prop
+      setError('Cannot retry: analysis content is missing.');
+      return;
+    }
     setLoading(true); setError(null); setIsLocked(false);
-    fetchMediaAnalysis(rawTweetsJsContent, isPaidUser, timeframe)
+    fetchMediaAnalysis(initialRawContent, isPaidUser, timeframe) // Use prop
       .then(res => {
-        if (res.requiresUpgrade) { setIsLocked(true); setAnalysisHtml(res.analysis); }
-        else setAnalysisHtml(res.analysis);
+        if (res.requiresUpgrade && !isPaidUser) { 
+          setIsLocked(true); 
+          setAnalysisHtml(res.analysis); 
+        } else {
+          setAnalysisHtml(res.analysis);
+        }
       })
       .catch(e => setError(e.message || 'Failed to generate media analysis'))
       .finally(() => setLoading(false));
-  }, [rawTweetsJsContent, isPaidUser, timeframe]);
+  } else if (dataSource?.type === 'scrape') {
+    if (allAnalysesContent?.mediaAnalysis) {
+       setAnalysisHtml(allAnalysesContent.mediaAnalysis);
+       setError(null); setLoading(false); setIsLocked(false);
+    } else {
+       setError("Scrape data for media analysis not found. Try refreshing the report.");
+    }
+  }
+};
   
-  const handleRetry = () => {
-    if (!rawTweetsJsContent) return;
-    setLoading(true); setError(null); setIsLocked(false);
-    fetchMediaAnalysis(rawTweetsJsContent, isPaidUser, timeframe)
-      .then(res => {
-        if (res.requiresUpgrade) { setIsLocked(true); setAnalysisHtml(res.analysis); }
-        else setAnalysisHtml(res.analysis);
-      })
-      .catch(e => setError(e.message || 'Failed to generate media analysis'))
-      .finally(() => setLoading(false));
-  };
-  
-  if (!rawTweetsJsContent) return null;
   
   return (
     <section className="report-section media-analysis">

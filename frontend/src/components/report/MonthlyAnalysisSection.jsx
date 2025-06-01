@@ -9,39 +9,75 @@ import { getMonthlyAnalysis as fetchMonthlyAnalysis } from '../../services/analy
  * trends and patterns in the user's Twitter activity on a month-by-month basis.
  * It's a premium feature that requires a paid account.
  */
-const MonthlyAnalysisSection = () => {
-  const { rawTweetsJsContent, isPaidUser, timeframe } = useTweetData();
+const MonthlyAnalysisSection = ({ initialRawContent }) => {
+  const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent } = useTweetData();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analysisHtml, setAnalysisHtml] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   
-  useEffect(() => {
-    if (!rawTweetsJsContent) return;
+useEffect(() => {
+  if (dataSource?.type === 'scrape') {
+    setAnalysisHtml(allAnalysesContent?.monthlyAnalysis || '');
+    setLoading(false);
+    setError(null);
+    setIsLocked(false); // Scrapes are inherently "paid"
+  } else if (dataSource?.type === 'file') {
+    if (initialRawContent) { // Use the prop
+      setLoading(true);
+      setError(null);
+      setIsLocked(false);
+      fetchMonthlyAnalysis(initialRawContent, isPaidUser, timeframe) // Call service with actual raw content
+        .then(result => {
+          if (result.requiresUpgrade && !isPaidUser) { // Only lock if actually not paid
+            setIsLocked(true);
+          }
+          setAnalysisHtml(result.analysis);
+        })
+        .catch(err => {
+          setError(err.message || 'Failed to generate monthly analysis.');
+          setAnalysisHtml('');
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(true); // Waiting for ReportPage to provide raw content
+    }
+  } else {
+    setLoading(false);
+    // setError("Appropriate data source not available for analysis."); // Or rely on ReportPage error
+  }
+// Add initialRawContent to the dependency array
+}, [dataSource, allAnalysesContent, initialRawContent, isPaidUser, timeframe]);
+  
+const handleRetry = () => {
+  if (dataSource?.type === 'file') {
+    if (!initialRawContent) { // Check prop
+      setError('Cannot retry: analysis content is missing.');
+      return;
+    }
     setLoading(true); setError(null); setIsLocked(false);
-    fetchMonthlyAnalysis(rawTweetsJsContent, isPaidUser, timeframe)
+    fetchMonthlyAnalysis(initialRawContent, isPaidUser, timeframe) // Use prop
       .then(res => {
-        if (res.requiresUpgrade) { setIsLocked(true); setAnalysisHtml(res.analysis); }
-        else setAnalysisHtml(res.analysis);
+        if (res.requiresUpgrade && !isPaidUser) { 
+          setIsLocked(true); 
+          setAnalysisHtml(res.analysis); 
+        } else {
+          setAnalysisHtml(res.analysis);
+        }
       })
       .catch(e => setError(e.message || 'Failed to generate monthly analysis'))
       .finally(() => setLoading(false));
-  }, [rawTweetsJsContent, isPaidUser, timeframe]);
+  } else if (dataSource?.type === 'scrape') {
+    if (allAnalysesContent?.monthlyAnalysis) {
+       setAnalysisHtml(allAnalysesContent.monthlyAnalysis);
+       setError(null); setLoading(false); setIsLocked(false);
+    } else {
+       setError("Scrape data for monthly analysis not found. Try refreshing the report.");
+    }
+  }
+};
   
-  const handleRetry = () => {
-    if (!rawTweetsJsContent) return;
-    setLoading(true); setError(null); setIsLocked(false);
-    fetchMonthlyAnalysis(rawTweetsJsContent, isPaidUser, timeframe)
-      .then(res => {
-        if (res.requiresUpgrade) { setIsLocked(true); setAnalysisHtml(res.analysis); }
-        else setAnalysisHtml(res.analysis);
-      })
-      .catch(e => setError(e.message || 'Failed to generate monthly analysis'))
-      .finally(() => setLoading(false));
-  };
-  
-  if (!rawTweetsJsContent) return null;
   
   return (
     <section className="report-section monthly-analysis">

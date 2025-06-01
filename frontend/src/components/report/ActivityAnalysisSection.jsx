@@ -8,7 +8,7 @@ import { getActivityAnalysis as fetchActivityAnalysis } from '../../services/ana
  * This component displays the activity analysis section, which shows 
  * patterns in tweeting behavior, best times to tweet, and activity trends.
  */
-const ActivityAnalysisSection = () => {
+const ActivityAnalysisSection = ({ initialRawContent }) => {
   const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent } = useTweetData();
   
   const [loading, setLoading] = useState(false);
@@ -16,31 +16,38 @@ const ActivityAnalysisSection = () => {
   const [analysisHtml, setAnalysisHtml] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   
-  useEffect(() => {
-    if (dataSource?.type === 'scrape') {
-      setAnalysisHtml(allAnalysesContent?.activityAnalysis || '');
-      setLoading(false);
-    } else if (rawTweetsJsContent) {
+useEffect(() => {
+  if (dataSource?.type === 'scrape') {
+    setAnalysisHtml(allAnalysesContent?.activityAnalysis || '');
+    setLoading(false);
+    setError(null);
+    setIsLocked(false); // Scrapes are inherently "paid"
+  } else if (dataSource?.type === 'file') {
+    if (initialRawContent) { // Use the prop
       setLoading(true);
       setError(null);
       setIsLocked(false);
-      fetchActivityAnalysis(rawTweetsJsContent, isPaidUser, timeframe)
+      fetchActivityAnalysis(initialRawContent, isPaidUser, timeframe) // Call service with actual raw content
         .then(result => {
-          if (result.requiresUpgrade) {
+          if (result.requiresUpgrade && !isPaidUser) { // Only lock if actually not paid
             setIsLocked(true);
-            setAnalysisHtml(result.analysis);
-          } else {
-            setAnalysisHtml(result.analysis);
           }
+          setAnalysisHtml(result.analysis);
         })
-        .catch(err => setError(err.message || 'Failed to generate activity analysis'))
+        .catch(err => {
+          setError(err.message || 'Failed to generate activity analysis.');
+          setAnalysisHtml('');
+        })
         .finally(() => setLoading(false));
+    } else {
+      setLoading(true); // Waiting for ReportPage to provide raw content
     }
-  }, [dataSource, allAnalysesContent, rawTweetsJsContent, isPaidUser, timeframe]);
-  
-  if (!rawTweetsJsContent && dataSource?.type !== 'scrape') {
-    return null; // Don't render if no data is available
+  } else {
+    setLoading(false);
+    // setError("Appropriate data source not available for analysis."); // Or rely on ReportPage error
   }
+// Add initialRawContent to the dependency array
+}, [dataSource, allAnalysesContent, initialRawContent, isPaidUser, timeframe]);
   
   return (
     <section className="report-section activity-analysis">

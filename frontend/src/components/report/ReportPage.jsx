@@ -39,133 +39,138 @@ const ReportPage = () => {
   const [pageError, setPageError] = useState(null);
   const reportContentRef = useRef(null);
 
-  useEffect(() => {
-    setLoading(true);
-    setPageError(null);
-    console.log("[ReportPage] useEffect triggered. DataSource:", dataSource);
+  // Add these new state variables:
+  const [fileRawContent, setFileRawContent] = useState(null);
+  const [lastFetchedDataSessionId, setLastFetchedDataSessionId] = useState(null);
 
-    if (dataSource?.type === 'username') {
-      console.log("[ReportPage] Scrape analysis detected.");
-      if (dataSource.handle && dataSource.paymentSessionId && !isNaN(dataSource.blocks)) {
-        // If allAnalysesContent is already present and matches current timeframe and handle/blocks, skip fetch.
-        // This simplistic check might need refinement if allAnalysesContent could be stale for other reasons.
-        if (allAnalysesContent && 
-            allAnalysesContent.processedData?.timeframe === currentTimeframe &&
-            allAnalysesContent.processedData?.twitterHandle === dataSource.handle && // Assuming processedData stores this
-            allAnalysesContent.processedData?.numBlocks === dataSource.blocks // Assuming processedData stores this
-            ) {
-            console.log("[ReportPage] Scrape data already in context for current params.");
-            setLoading(false);
-            return;
-        }
+useEffect(() => {
+  setLoading(true);
+  setPageError(null);
+  // console.log("[ReportPage] useEffect Triggered. DataSource:", dataSource, "CurrentTimeframe:", currentTimeframe, "Context dataSessionId:", dataSessionId);
 
-        console.log("[ReportPage] Fetching full scraped analysis...");
-        getFullScrapedAnalysis(dataSource.handle, dataSource.paymentSessionId, currentTimeframe, dataSource.blocks)
-          .then(res => {
-            if (res.analyses) {
-              console.log("[ReportPage] Scraped analysis fetched successfully.");
-              setFullAnalyses(res.analyses);
-              if (res.analyses.processedData) {
-                 // The scrapeJobId is the unique identifier for this scrape instance
-                 updateProcessedDataAndSessionId(res.analyses.processedData, dataSource.scrapeJobId, false); 
-              }
-            } else {
-              console.error("[ReportPage] Failed to load scraped analysis data, no 'analyses' key in response:", res);
-              setPageError(res.message || "Failed to load scraped analysis data.");
-            }
-          })
-          .catch(err => {
-            console.error("[ReportPage] Error fetching scraped analysis:", err);
-            setPageError(`Failed to load report: ${err.message}`);
-          })
-          .finally(() => setLoading(false));
-      } else {
-         console.warn("[ReportPage] Missing required data for scrape analysis in dataSource:", dataSource);
-         setPageError("Missing required data for scrape analysis.");
-         setLoading(false);
-      }
-    } else if (dataSource?.type === 'file') {
-      console.log("[ReportPage] File analysis detected.");
-      if (dataSource.dataSessionId) {
-        // Check if data in context matches the required session ID
-        if (processedData && dataSessionId === dataSource.dataSessionId && processedData.timeframe === currentTimeframe) {
-          console.log("[ReportPage] File data already in context for current session and timeframe.");
-          setLoading(false);
-        } else {
-          console.log("[ReportPage] Fetching file session data from server for session:", dataSource.dataSessionId);
-          // Fetch session data (which includes processedData) from the backend
-          apiRequest('GET', `/analyze/session/${dataSource.dataSessionId}`)
-            .then(resData => {
-              if (resData.status === 'success' && resData.processedData) {
-                console.log("[ReportPage] File session data fetched successfully.");
-                updateProcessedDataAndSessionId(resData.processedData, dataSource.dataSessionId, true); // Persist metadata
-                // If timeframe from session is different, update component state and context
-                if (resData.timeframe && resData.timeframe !== currentTimeframe) {
-                    setCurrentTimeframe(resData.timeframe);
-                    updateTimeframe(resData.timeframe); // Update context timeframe
-                }
-              } else {
-                throw new Error(resData.message || 'Failed to retrieve session data.');
-              }
-            })
-            .catch(err => {
-              console.error("[ReportPage] Error fetching file session data:", err);
-              setPageError(`Failed to load your analysis session: ${err.message}. Please try re-uploading.`);
-            })
-            .finally(() => setLoading(false));
-        }
-      } else {
-         console.warn("[ReportPage] File analysis type but dataSessionId is missing in dataSource:", dataSource);
-         setPageError("Analysis session ID is missing for file. Please re-upload your file.");
-         setLoading(false);
-      }
-    } else {
-      console.warn("[ReportPage] No valid dataSource found or data is incomplete.");
-      setPageError("No analysis data found. Please start by uploading a file or analyzing a username.");
+  const loadDataForFile = async () => {
+    if (!dataSource.dataSessionId) {
+      setPageError("Analysis session ID is missing for file. Please re-upload your file.");
       setLoading(false);
-      // setTimeout(() => navigate('/'), 3000); // Avoid auto-redirect if user is trying to fix
+      return;
     }
-  }, [
-      dataSource, 
-      // paymentSessionId, // Now part of dataSource
-      dataSessionId,    // From context, to compare with dataSource.dataSessionId
-      processedData,    // From context
-      allAnalysesContent, 
-      currentTimeframe, 
-      setFullAnalyses, 
-      updateProcessedDataAndSessionId, 
-      updateTimeframe, // Added updateTimeframe
-      navigate
-    ]);
-  
-  const handleTimeframeChange = (newTimeframe) => {
-    console.log("[ReportPage] Timeframe changed to:", newTimeframe);
-    setCurrentTimeframe(newTimeframe);
-    updateTimeframe(newTimeframe); 
-    // The main useEffect will re-run due to currentTimeframe change if dataSource is 'username',
-    // or individual analysis sections will re-fetch because `timeframe` in context changes.
-    // Forcing a reload if it's a username scrape:
-    if (dataSource?.type === 'username' && dataSource.handle && dataSource.paymentSessionId && !isNaN(dataSource.blocks)) {
-      setLoading(true);
-      getFullScrapedAnalysis(dataSource.handle, dataSource.paymentSessionId, newTimeframe, dataSource.blocks)
-        .then(res => {
-            if (res.analyses) {
-              setFullAnalyses(res.analyses);
-              if (res.analyses.processedData) {
-                 updateProcessedDataAndSessionId(res.analyses.processedData, dataSource.scrapeJobId, false);
-              }
-            } else {
-               setPageError("Failed to reload analysis for new timeframe.");
-            }
-        })
-        .catch(err => {
-          console.error(`[ReportPage] Error reloading scrape for timeframe ${newTimeframe}:`, err);
-          setPageError(`Failed to reload report for timeframe ${newTimeframe}: ${err.message}`);
-        })
-        .finally(() => setLoading(false));
+
+    let currentProcessedData = processedData; // Use context's processedData
+
+    // 1. Fetch/Update Processed Data (for charts, etc.)
+    if (!currentProcessedData || dataSessionId !== dataSource.dataSessionId || (currentProcessedData.timeframe !== currentTimeframe && dataSource.dataSessionId === dataSessionId)) {
+      try {
+        const sessionRes = await apiRequest('GET', `/analyze/session/${dataSource.dataSessionId}`);
+        if (sessionRes.status === 'success' && sessionRes.processedData) {
+          updateProcessedDataAndSessionId(sessionRes.processedData, dataSource.dataSessionId, true);
+          currentProcessedData = sessionRes.processedData;
+          if (sessionRes.timeframe && sessionRes.timeframe !== currentTimeframe) {
+            setCurrentTimeframe(sessionRes.timeframe);
+            updateTimeframe(sessionRes.timeframe);
+          }
+        } else {
+          throw new Error(sessionRes.message || 'Failed to retrieve session metadata.');
+        }
+      } catch (err) {
+        console.error("[ReportPage] Error fetching processed data:", err);
+        setPageError(`Failed to load analysis metadata: ${err.message}.`);
+        setLoading(false);
+        return;
+      }
     }
-    // For file uploads, components like ExecutiveSummarySection will re-fetch using the new `timeframe` from context.
+
+    // 2. Fetch Raw Content (for AI analysis)
+    if (!fileRawContent || lastFetchedDataSessionId !== dataSource.dataSessionId) {
+      try {
+        const rawResponse = await apiRequest('GET', `/analyze/session/${dataSource.dataSessionId}/raw`);
+        if (rawResponse.status === 'success' && rawResponse.rawContent) {
+          setFileRawContent(rawResponse.rawContent);
+          setLastFetchedDataSessionId(dataSource.dataSessionId);
+          if (rawResponse.timeframe && rawResponse.timeframe !== (currentProcessedData?.timeframe || currentTimeframe)) {
+             updateTimeframe(rawResponse.timeframe);
+             if(rawResponse.timeframe !== currentTimeframe) setCurrentTimeframe(rawResponse.timeframe);
+          }
+        } else {
+          throw new Error(rawResponse.message || 'Failed to retrieve raw content.');
+        }
+      } catch (err) {
+        console.error("[ReportPage] Error fetching raw content:", err);
+        setPageError(`Failed to load raw data for analysis: ${err.message}.`);
+        setFileRawContent(null);
+        setLoading(false);
+        return;
+      }
+    }
+    setLoading(false);
   };
+
+  const loadDataForScrape = async () => {
+    if (!dataSource.handle || !dataSource.paymentSessionId || isNaN(dataSource.blocks) || !dataSource.scrapeJobId) {
+      setPageError("Missing required data for scrape analysis.");
+      setLoading(false);
+      return;
+    }
+
+    if (
+      allAnalysesContent &&
+      allAnalysesContent.processedData?.scrapeJobId === dataSource.scrapeJobId &&
+      allAnalysesContent.processedData?.timeframe === currentTimeframe
+    ) {
+      if (processedData?.scrapeJobId !== dataSource.scrapeJobId || dataSessionId !== dataSource.scrapeJobId) {
+        updateProcessedDataAndSessionId(allAnalysesContent.processedData, dataSource.scrapeJobId, false);
+      }
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await getFullScrapedAnalysis(dataSource.handle, dataSource.paymentSessionId, currentTimeframe, dataSource.blocks);
+      if (res.analyses) {
+        setFullAnalyses(res.analyses);
+        if (res.analyses.processedData) {
+          updateProcessedDataAndSessionId(res.analyses.processedData, dataSource.scrapeJobId, false);
+        }
+      } else {
+        throw new Error(res.message || "Scraped analysis data is malformed.");
+      }
+    } catch (err) {
+      console.error("[ReportPage] Error fetching/processing scraped analysis:", err);
+      setPageError(`Failed to load scraped report: ${err.message}`);
+    }
+    setLoading(false);
+  };
+
+  if (dataSource?.type === 'file') {
+    loadDataForFile();
+  } else if (dataSource?.type === 'username') {
+    loadDataForScrape();
+  } else {
+    setPageError("No analysis data source identified. Please start over.");
+    setLoading(false);
+  }
+
+}, [
+    dataSource,
+    currentTimeframe,
+    dataSessionId, 
+    updateProcessedDataAndSessionId, 
+    updateTimeframe, 
+    setFullAnalyses
+]);
+  
+const handleTimeframeChange = (newTimeframe) => {
+  console.log("[ReportPage] Timeframe changed to:", newTimeframe);
+  setCurrentTimeframe(newTimeframe); // Update local state
+  updateTimeframe(newTimeframe);     // Update global context
+
+  // For file uploads, child components use new 'timeframe' from context with existing 'fileRawContent'.
+  // For scrapes, the main useEffect will detect 'currentTimeframe' change and re-trigger 'loadDataForScrape'.
+  if (dataSource?.type === 'username') {
+    // Optional: To be absolutely sure of a refresh, you could clear allAnalysesContent
+    // setFullAnalyses(null);
+    // However, the existing useEffect logic should handle the re-fetch based on currentTimeframe change.
+  }
+};
 
   // ... (handleGeneratePDF remains mostly the same, ensure it uses `reportContentRef`) ...
   const handleGeneratePDF = async () => {
@@ -273,21 +278,22 @@ const ReportPage = () => {
   }
   
   // Determine if we have the necessary data to render a report
-  // For file, we need processedData AND the dataSessionId in context should match dataSource
   const canRenderFileReport = dataSource?.type === 'file' && 
                               processedData && 
+                              fileRawContent && 
                               dataSource.dataSessionId && 
-                              dataSessionId === dataSource.dataSessionId;
-  // For scrape, we need allAnalysesContent
-  const canRenderScrapeReport = dataSource?.type === 'username' && allAnalysesContent;
+                              dataSessionId === dataSource.dataSessionId; // dataSessionId from context
+  const canRenderScrapeReport = dataSource?.type === 'username' && 
+                                allAnalysesContent && 
+                                allAnalysesContent.processedData?.scrapeJobId === dataSource.scrapeJobId;
 
-  if (!canRenderFileReport && !canRenderScrapeReport) {
+  if (!canRenderFileReport && !canRenderScrapeReport && !loading && !pageError) {
     return (
       <div className="report-placeholder" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh'}}>
         <div className="container" style={{textAlign: 'center'}}>
           <div className="placeholder-content">
-            <h1>Report Data Not Ready</h1>
-            <p>We are having trouble loading your report data. This might be due to a recent navigation or incomplete data loading. Please ensure you have completed the previous steps, or try starting over.</p>
+            <h1>Report Data Not Fully Loaded</h1>
+            <p>There was an issue preparing all parts of your report. Some data might be missing. You can try refreshing or starting over.</p>
             <Link to="/" className="btn btn-primary btn-md mt-4">
               Start Over
             </Link>
@@ -311,12 +317,12 @@ const ReportPage = () => {
       
       <div ref={reportContentRef} className="report-content">
         <div className="container">
-          <ExecutiveSummarySection />
-          <ActivityAnalysisSection />
+          <ExecutiveSummarySection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
+          <ActivityAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
           <TwitterActivityChart /> 
           
-          <TopicAnalysisSection />
-          <EngagementAnalysisSection />
+          <TopicAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
+          <EngagementAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
           
           {!isPaidUser && dataSource?.type === 'file' && ( // Show upgrade prompt only for file uploads if not paid
             <div className="upgrade-section" id="upgrade-prompt-section">
@@ -324,9 +330,9 @@ const ReportPage = () => {
             </div>
           )}
           
-          <MediaAnalysisSection />
-          <MonthlyAnalysisSection />
-          <ContentRecommendationsSection />
+          <MediaAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
+          <MonthlyAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
+          <ContentRecommendationsSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
           <ImageAnalysisSection />
         </div>
       </div>

@@ -8,37 +8,45 @@ import { getExecutiveSummary as fetchExecutiveSummary } from '../../services/ana
  * This component displays the executive summary analysis from the Twitter data.
  * It shows a premium overlay for free users and fetches the analysis for paid users.
  */
-const ExecutiveSummarySection = () => {
+const ExecutiveSummarySection = ({ initialRawContent }) => {
   const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent } = useTweetData();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analysisHtml, setAnalysisHtml] = useState('');
   const [isLocked, setIsLocked] = useState(false);
 
-  useEffect(() => {
-    if (dataSource?.type === 'scrape') {
-      setAnalysisHtml(allAnalysesContent?.executiveSummary || '');
-      setLoading(false);
-    } else if (rawTweetsJsContent) {
+useEffect(() => {
+  if (dataSource?.type === 'scrape') {
+    setAnalysisHtml(allAnalysesContent?.executiveSummary || '');
+    setLoading(false);
+    setError(null);
+    setIsLocked(false); // Scrapes are inherently "paid"
+  } else if (dataSource?.type === 'file') {
+    if (initialRawContent) { // Use the prop
       setLoading(true);
       setError(null);
       setIsLocked(false);
-      fetchExecutiveSummary(rawTweetsJsContent, isPaidUser, timeframe)
+      fetchExecutiveSummary(initialRawContent, isPaidUser, timeframe) // Call service with actual raw content
         .then(result => {
-          if (result.requiresUpgrade) {
+          if (result.requiresUpgrade && !isPaidUser) { // Only lock if actually not paid
             setIsLocked(true);
-            setAnalysisHtml(result.analysis);
-          } else {
-            setAnalysisHtml(result.analysis);
           }
+          setAnalysisHtml(result.analysis);
         })
         .catch(err => {
           setError(err.message || 'Failed to generate executive summary.');
           setAnalysisHtml('');
         })
         .finally(() => setLoading(false));
+    } else {
+      setLoading(true); // Waiting for ReportPage to provide raw content
     }
-  }, [dataSource, allAnalysesContent, rawTweetsJsContent, isPaidUser, timeframe]);
+  } else {
+    setLoading(false);
+    // setError("Appropriate data source not available for analysis."); // Or rely on ReportPage error
+  }
+// Add initialRawContent to the dependency array
+}, [dataSource, allAnalysesContent, initialRawContent, isPaidUser, timeframe]);
 
   const renderContent = () => {
     if (loading) {
