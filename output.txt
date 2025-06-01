@@ -1,41 +1,53 @@
-Task completed successfully. Reviewed TweetDataContext.jsx to confirm function references are stable and acknowledge re-render behavior.
+Task completed successfully. Updated ReportPage.jsx to remove initialRawContent props and centralize data fetching responsibility.
 
-## Review Results:
+## Changes Made:
 
-### 1. useCallback Wrapping - ✅ CONFIRMED
-All updater functions are properly wrapped in `useCallback` to stabilize their references:
+### 1. Removed State Variables - ✅ COMPLETE
+**Lines 43-44**: Removed unnecessary state variables:
+- `const [fileRawContent, setFileRawContent] = useState(null);` - REMOVED
+- `const [lastFetchedDataSessionId, setLastFetchedDataSessionId] = useState(null);` - REMOVED
 
-**Line 80**: `updateProcessedDataAndSessionId` - ✅ Wrapped in useCallback with empty dependencies []
-**Line 116**: `updateProcessedDataAndRawContent` - ✅ Wrapped in useCallback with empty dependencies []
-**Line 144**: `updateTimeframe` - ✅ Wrapped in useCallback with empty dependencies []
-**Line 162**: `updatePaidStatus` - ✅ Wrapped in useCallback with empty dependencies []
-**Line 180**: `clearData` - ✅ Wrapped in useCallback with empty dependencies []
-**Line 196**: `updateDataSource` - ✅ Wrapped in useCallback with empty dependencies []
-**Line 211**: `resetEverything` - ✅ Wrapped in useCallback with empty dependencies []
+### 2. Simplified useEffect Function - ✅ COMPLETE
+**Lines 48-72**: Refactored `loadDataForFile` to `loadProcessedDataForFile`:
+- Removed raw content fetching logic (30+ lines)
+- Focuses only on processed data for charts and metadata
+- Simplified error handling and state management
+- Maintains session validation and timeframe synchronization
 
-### 2. Function Reference Stability Analysis - ✅ OPTIMAL
-- All context functions have stable references due to proper useCallback usage
-- Empty dependency arrays [] ensure functions don't change between renders
-- No closure dependencies that would cause function recreation
-- Context provider itself is not a source of instability
+### 3. Updated Function Calls - ✅ COMPLETE
+**Line 111**: Changed function call from `loadDataForFile()` to `loadProcessedDataForFile()`
 
-### 3. Re-render Behavior Acknowledgment - ✅ UNDERSTOOD
-**Standard React Behavior Confirmed**:
-- State updates with new object/array references (even identical content) will cause re-renders
-- This is expected and standard React behavior
-- Context consumers will re-render when context value changes
-- The primary optimization target is reducing frequency of updates (over-fetching), not eliminating re-renders from identical data
+### 4. Updated useEffect Dependencies - ✅ COMPLETE
+**Line 119**: Enhanced dependency array to include:
+- `processedData` and `allAnalysesContent` for proper tracking
+- Maintains existing dependencies for comprehensive state monitoring
 
-### 4. Context Value Structure - ✅ STABLE
-- Context value object (lines 238-258) is recreated on each render
-- However, individual function references within are stable due to useCallback
-- State values will only change when actually updated
-- No unnecessary function recreations causing cascading re-renders
+### 5. Simplified canRenderFileReport Check - ✅ COMPLETE
+**Lines 241-244**: Updated rendering condition:
+- **Before**: Required `processedData`, `fileRawContent`, `dataSessionId`, and session ID match
+- **After**: Only requires `processedData`, `dataSessionId`, and session ID match
+- Removed dependency on `fileRawContent` since analysis sections handle their own data
 
-### 5. Primary Problem Focus - ✅ CORRECTLY IDENTIFIED
-**Main Issue Being Addressed**: Over-fetching of data leading to frequent context updates
-**Secondary Concern**: Context provider function stability (confirmed stable)
-**Acknowledged Limitation**: Re-renders from identical data updates are standard React behavior and not the primary optimization target at this stage
+### 6. Removed initialRawContent Props - ✅ COMPLETE
+**Lines 279-295**: Updated all analysis section component calls:
+- **Before**: `<ExecutiveSummarySection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />`
+- **After**: `<ExecutiveSummarySection />`
+- Applied to all 7 analysis sections consistently
 
-## Conclusion
-The TweetDataContext.jsx implementation has optimal function reference stability. All updater functions are properly wrapped in useCallback with stable dependencies, ensuring the context provider itself is not a source of instability. The main optimization focus correctly targets reducing over-fetching frequency rather than eliminating re-renders from identical data, which is standard React behavior.
+## Architecture Improvements:
+
+### Separation of Concerns:
+- **ReportPage**: Responsible for processed data (charts, metadata) and overall page state
+- **Analysis Sections**: Responsible for their own AI-generated content via dataSessionId
+
+### Performance Benefits:
+- **Eliminated Raw Content Transfer**: No more large content props passed to components
+- **Reduced Memory Usage**: ReportPage no longer stores large raw content in state
+- **Faster Loading**: Only essential processed data loaded at page level
+
+### Data Flow Simplification:
+- **Before**: ReportPage → fetch raw content → pass as props → analysis sections
+- **After**: ReportPage → load processed data | Analysis sections → fetch via dataSessionId
+
+## Result:
+ReportPage now focuses on essential chart data and page orchestration while analysis sections independently fetch their content using dataSessionId. This eliminates PayloadTooLargeError issues and creates a cleaner, more maintainable architecture with better performance characteristics.

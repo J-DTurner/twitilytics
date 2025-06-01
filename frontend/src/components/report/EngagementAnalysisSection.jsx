@@ -8,8 +8,8 @@ import { getEngagementAnalysis as fetchEngagementAnalysis } from '../../services
  * This component displays the engagement analysis section, which shows 
  * patterns in tweet engagement, top performing tweets, and engagement metrics.
  */
-const EngagementAnalysisSection = ({ initialRawContent }) => {
-  const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent } = useTweetData();
+const EngagementAnalysisSection = () => {
+  const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent, dataSessionId } = useTweetData();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -23,11 +23,11 @@ useEffect(() => {
     setError(null);
     setIsLocked(false); // Scrapes are inherently "paid"
   } else if (dataSource?.type === 'file') {
-    if (initialRawContent) { // Use the prop
+    if (dataSessionId) {
       setLoading(true);
       setError(null);
       setIsLocked(false);
-      fetchEngagementAnalysis(initialRawContent, isPaidUser, timeframe) // Call service with actual raw content
+      fetchEngagementAnalysis(dataSessionId, isPaidUser, timeframe)
         .then(result => {
           if (result.requiresUpgrade && !isPaidUser) { // Only lock if actually not paid
             setIsLocked(true);
@@ -40,23 +40,22 @@ useEffect(() => {
         })
         .finally(() => setLoading(false));
     } else {
-      setLoading(true); // Waiting for ReportPage to provide raw content
+      setLoading(true); // Waiting for data session ID
     }
   } else {
     setLoading(false);
     // setError("Appropriate data source not available for analysis."); // Or rely on ReportPage error
   }
-// Add initialRawContent to the dependency array
-}, [dataSource, allAnalysesContent, initialRawContent, isPaidUser, timeframe]);
+}, [dataSource, allAnalysesContent, dataSessionId, isPaidUser, timeframe]);
   
 const handleRetry = () => {
   if (dataSource?.type === 'file') {
-    if (!initialRawContent) { // Check prop
-      setError('Cannot retry: analysis content is missing.');
+    if (!dataSessionId) {
+      setError('Cannot retry: data session ID is missing.');
       return;
     }
     setLoading(true); setError(null); setIsLocked(false);
-    fetchEngagementAnalysis(initialRawContent, isPaidUser, timeframe) // Use prop
+    fetchEngagementAnalysis(dataSessionId, isPaidUser, timeframe)
       .then(res => {
         if (res.requiresUpgrade && !isPaidUser) { 
           setIsLocked(true); 

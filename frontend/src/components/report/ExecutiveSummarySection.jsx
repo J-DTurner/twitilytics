@@ -8,8 +8,8 @@ import { getExecutiveSummary as fetchExecutiveSummary } from '../../services/ana
  * This component displays the executive summary analysis from the Twitter data.
  * It shows a premium overlay for free users and fetches the analysis for paid users.
  */
-const ExecutiveSummarySection = ({ initialRawContent }) => {
-  const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent } = useTweetData();
+const ExecutiveSummarySection = () => {
+  const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent, dataSessionId } = useTweetData();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analysisHtml, setAnalysisHtml] = useState('');
@@ -22,11 +22,11 @@ useEffect(() => {
     setError(null);
     setIsLocked(false); // Scrapes are inherently "paid"
   } else if (dataSource?.type === 'file') {
-    if (initialRawContent) { // Use the prop
+    if (dataSessionId) { // Use dataSessionId from context
       setLoading(true);
       setError(null);
       setIsLocked(false);
-      fetchExecutiveSummary(initialRawContent, isPaidUser, timeframe) // Call service with actual raw content
+      fetchExecutiveSummary(dataSessionId, isPaidUser, timeframe) // Pass dataSessionId to the service call
         .then(result => {
           if (result.requiresUpgrade && !isPaidUser) { // Only lock if actually not paid
             setIsLocked(true);
@@ -39,14 +39,14 @@ useEffect(() => {
         })
         .finally(() => setLoading(false));
     } else {
-      setLoading(true); // Waiting for ReportPage to provide raw content
+      setLoading(true); // Waiting for ReportPage to provide data session ID
     }
   } else {
     setLoading(false);
     // setError("Appropriate data source not available for analysis."); // Or rely on ReportPage error
   }
-// Add initialRawContent to the dependency array
-}, [dataSource, allAnalysesContent, initialRawContent, isPaidUser, timeframe]);
+// Add dataSessionId to dependencies, remove initialRawContent
+}, [dataSource, allAnalysesContent, dataSessionId, isPaidUser, timeframe]);
 
   const renderContent = () => {
     if (loading) {

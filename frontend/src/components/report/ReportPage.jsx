@@ -39,31 +39,23 @@ const ReportPage = () => {
   const [pageError, setPageError] = useState(null);
   const reportContentRef = useRef(null);
 
-  // Add these new state variables:
-  const [fileRawContent, setFileRawContent] = useState(null);
-  const [lastFetchedDataSessionId, setLastFetchedDataSessionId] = useState(null);
 
 useEffect(() => {
   setLoading(true);
   setPageError(null);
   // console.log("[ReportPage] useEffect Triggered. DataSource:", dataSource, "CurrentTimeframe:", currentTimeframe, "Context dataSessionId:", dataSessionId);
 
-  const loadDataForFile = async () => {
+  const loadProcessedDataForFile = async () => {
     if (!dataSource.dataSessionId) {
-      setPageError("Analysis session ID is missing for file. Please re-upload your file.");
+      setPageError("Analysis session ID is missing for file. Please re-upload.");
       setLoading(false);
       return;
     }
-
-    let currentProcessedData = processedData; // Use context's processedData
-
-    // 1. Fetch/Update Processed Data (for charts, etc.)
-    if (!currentProcessedData || dataSessionId !== dataSource.dataSessionId || (currentProcessedData.timeframe !== currentTimeframe && dataSource.dataSessionId === dataSessionId)) {
+    if (!processedData || dataSessionId !== dataSource.dataSessionId || processedData.timeframe !== currentTimeframe) {
       try {
         const sessionRes = await apiRequest('GET', `/analyze/session/${dataSource.dataSessionId}`);
         if (sessionRes.status === 'success' && sessionRes.processedData) {
           updateProcessedDataAndSessionId(sessionRes.processedData, dataSource.dataSessionId, true);
-          currentProcessedData = sessionRes.processedData;
           if (sessionRes.timeframe && sessionRes.timeframe !== currentTimeframe) {
             setCurrentTimeframe(sessionRes.timeframe);
             updateTimeframe(sessionRes.timeframe);
@@ -72,33 +64,8 @@ useEffect(() => {
           throw new Error(sessionRes.message || 'Failed to retrieve session metadata.');
         }
       } catch (err) {
-        console.error("[ReportPage] Error fetching processed data:", err);
+        console.error("[ReportPage] Error fetching processed data for file:", err);
         setPageError(`Failed to load analysis metadata: ${err.message}.`);
-        setLoading(false);
-        return;
-      }
-    }
-
-    // 2. Fetch Raw Content (for AI analysis)
-    if (!fileRawContent || lastFetchedDataSessionId !== dataSource.dataSessionId) {
-      try {
-        const rawResponse = await apiRequest('GET', `/analyze/session/${dataSource.dataSessionId}/raw`);
-        if (rawResponse.status === 'success' && rawResponse.rawContent) {
-          setFileRawContent(rawResponse.rawContent);
-          setLastFetchedDataSessionId(dataSource.dataSessionId);
-          if (rawResponse.timeframe && rawResponse.timeframe !== (currentProcessedData?.timeframe || currentTimeframe)) {
-             updateTimeframe(rawResponse.timeframe);
-             if(rawResponse.timeframe !== currentTimeframe) setCurrentTimeframe(rawResponse.timeframe);
-          }
-        } else {
-          throw new Error(rawResponse.message || 'Failed to retrieve raw content.');
-        }
-      } catch (err) {
-        console.error("[ReportPage] Error fetching raw content:", err);
-        setPageError(`Failed to load raw data for analysis: ${err.message}.`);
-        setFileRawContent(null);
-        setLoading(false);
-        return;
       }
     }
     setLoading(false);
@@ -141,7 +108,7 @@ useEffect(() => {
   };
 
   if (dataSource?.type === 'file') {
-    loadDataForFile();
+    loadProcessedDataForFile();
   } else if (dataSource?.type === 'username') {
     loadDataForScrape();
   } else {
@@ -149,14 +116,7 @@ useEffect(() => {
     setLoading(false);
   }
 
-}, [
-    dataSource,
-    currentTimeframe,
-    dataSessionId, 
-    updateProcessedDataAndSessionId, 
-    updateTimeframe, 
-    setFullAnalyses
-]);
+}, [dataSource, currentTimeframe, dataSessionId, processedData, allAnalysesContent, updateProcessedDataAndSessionId, updateTimeframe, setFullAnalyses]);
   
 const handleTimeframeChange = (newTimeframe) => {
   console.log("[ReportPage] Timeframe changed to:", newTimeframe);
@@ -280,9 +240,8 @@ const handleTimeframeChange = (newTimeframe) => {
   // Determine if we have the necessary data to render a report
   const canRenderFileReport = dataSource?.type === 'file' && 
                               processedData && 
-                              fileRawContent && 
                               dataSource.dataSessionId && 
-                              dataSessionId === dataSource.dataSessionId; // dataSessionId from context
+                              dataSessionId === dataSource.dataSessionId;
   const canRenderScrapeReport = dataSource?.type === 'username' && 
                                 allAnalysesContent && 
                                 allAnalysesContent.processedData?.scrapeJobId === dataSource.scrapeJobId;
@@ -317,12 +276,12 @@ const handleTimeframeChange = (newTimeframe) => {
       
       <div ref={reportContentRef} className="report-content">
         <div className="container">
-          <ExecutiveSummarySection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
-          <ActivityAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
+          <ExecutiveSummarySection />
+          <ActivityAnalysisSection />
           <TwitterActivityChart /> 
           
-          <TopicAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
-          <EngagementAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
+          <TopicAnalysisSection />
+          <EngagementAnalysisSection />
           
           {!isPaidUser && dataSource?.type === 'file' && ( // Show upgrade prompt only for file uploads if not paid
             <div className="upgrade-section" id="upgrade-prompt-section">
@@ -330,9 +289,9 @@ const handleTimeframeChange = (newTimeframe) => {
             </div>
           )}
           
-          <MediaAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
-          <MonthlyAnalysisSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
-          <ContentRecommendationsSection initialRawContent={dataSource?.type === 'file' ? fileRawContent : null} />
+          <MediaAnalysisSection />
+          <MonthlyAnalysisSection />
+          <ContentRecommendationsSection />
           <ImageAnalysisSection />
         </div>
       </div>

@@ -18,10 +18,20 @@ const upload = multer();
  * Data validation middleware
  */
 const validateAnalysisRequest = [
-  body('tweetsJsContent').notEmpty().isString().withMessage('tweetsJsContent is required'),
+  body('tweetsJsContent').optional().isString().withMessage('tweetsJsContent must be a string if provided'),
+  body('dataSessionId').optional().isString().withMessage('dataSessionId must be a string if provided'),
   body('analysisType').notEmpty().withMessage('analysisType is required'),
   body('isPaid').isBoolean().withMessage('isPaid must be a boolean'),
   body('timeframe').optional().isString().withMessage('timeframe must be a string'),
+  // Custom validator to ensure one of tweetsJsContent or dataSessionId is present
+  (req, res, next) => {
+    const { tweetsJsContent, dataSessionId } = req.body;
+    if (!tweetsJsContent && !dataSessionId) {
+      logger.warn('Analysis request validation failed: Missing tweetsJsContent or dataSessionId', { ip: req.ip, path: req.path });
+      return res.status(400).json({ status: 'error', errors: [{ msg: 'Either tweetsJsContent or dataSessionId is required' }] });
+    }
+    next();
+  },
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -40,33 +50,80 @@ const validateAnalysisRequest = [
  */
 const analysisHandler = (analysisType, generatePrompt, options = {}) => async (req, res) => {
   try {
-    const { tweetsJsContent, isPaid = false, timeframe = 'all', imageUrl, tweetText } = req.body;
-    logger.info(`Received ${analysisType} analysis request`, { isPaid, timeframe });
+    const { tweetsJsContent, dataSessionId, isPaid: isPaidFromRequest, timeframe = 'all', imageUrl, tweetText } = req.body;
+    logger.info(`Received ${analysisType} analysis request`, { 
+      isPaid: isPaidFromRequest, 
+      timeframe, 
+      hasTweetsJsContent: !!tweetsJsContent, 
+      dataSessionId 
+    });
 
-    let parsedData;
-    try {
-      parsedData = parseTweetsJS(tweetsJsContent);
-      logger.debug(`Parsed ${parsedData.length} raw tweet items for ${analysisType}`);
-    } catch (parseError) {
-      logger.error(`Error parsing tweetsJsContent for ${analysisType}: ${parseError.message}`);
-      return res.status(400).json({ status: 'error', message: 'Invalid tweets.js content', error: process.env.NODE_ENV === 'development' ? parseError.message : undefined });
+    let finalProcessedData;
+    let finalIsPaid = isPaidFromRequest;
+    let finalTimeframe = timeframe;
+
+    if (dataSessionId) {
+      const session = sessionManager.getSession(dataSessionId);
+      if (!session) {
+        logger.error(`Session not found for dataSessionId: ${dataSessionId} in ${analysisType} handler`);
+        return res.status(404).json({ status: 'error', message: 'Analysis session not found or expired. Please re-upload your file.' });
+      }
+      finalIsPaid = session.isPaidUser;
+      if (session.processedData && session.timeframe === timeframe) {
+        logger.debug(`Using pre-processed data from session ${dataSessionId} for ${analysisType} (timeframe match: ${timeframe})`);
+        finalProcessedData = session.processedData;
+        finalTimeframe = session.timeframe;
+      } else {
+        logger.info(`Re-processing data from session ${dataSessionId} for ${analysisType} due to timeframe mismatch or missing processed data. Requested: ${timeframe}, Session: ${session.timeframe}`);
+        if (!session.rawContent) {
+            logger.error(`Raw content missing in session ${dataSessionId} for re-processing.`);
+            return res.status(500).json({ status: 'error', message: 'Cannot re-process data, raw content missing from session.' });
+        }
+        let parsedDataFromSession;
+        try {
+            parsedDataFromSession = parseTweetsJS(session.rawContent);
+        } catch (parseError) {
+            logger.error(`Error re-parsing tweetsJsContent from session ${dataSessionId} for ${analysisType}: ${parseError.message}`);
+            return res.status(400).json({ status: 'error', message: 'Invalid tweets.js content in session', error: process.env.NODE_ENV === 'development' ? parseError.message : undefined });
+        }
+        try {
+            finalProcessedData = processTweetData(parsedDataFromSession, timeframe, finalIsPaid);
+            finalTimeframe = timeframe;
+        } catch (processingError) {
+            logger.error(`Error re-processing tweet data from session ${dataSessionId} for ${analysisType}: ${processingError.message}`);
+            return res.status(500).json({ status: 'error', message: 'Failed to re-process tweet data from session', error: process.env.NODE_ENV === 'development' ? processingError.message : undefined });
+        }
+      }
+    } else if (tweetsJsContent) {
+      logger.debug(`Processing direct tweetsJsContent for ${analysisType}`);
+      let parsedData;
+      try {
+        parsedData = parseTweetsJS(tweetsJsContent);
+        logger.debug(`Parsed ${parsedData.length} raw tweet items for ${analysisType}`);
+      } catch (parseError) {
+        logger.error(`Error parsing tweetsJsContent for ${analysisType}: ${parseError.message}`);
+        return res.status(400).json({ status: 'error', message: 'Invalid tweets.js content', error: process.env.NODE_ENV === 'development' ? parseError.message : undefined });
+      }
+      try {
+        finalProcessedData = processTweetData(parsedData, timeframe, isPaidFromRequest);
+        finalIsPaid = isPaidFromRequest;
+        finalTimeframe = timeframe;
+        logger.debug(`Processed ${finalProcessedData.allTweets.length} tweets for ${analysisType}`);
+      } catch (processingError) {
+        logger.error(`Error processing tweet data for ${analysisType}: ${processingError.message}`);
+        return res.status(500).json({ status: 'error', message: 'Failed to process tweet data', error: process.env.NODE_ENV === 'development' ? processingError.message : undefined });
+      }
+    } else {
+      logger.error('Neither tweetsJsContent nor dataSessionId provided.');
+      return res.status(400).json({ status: 'error', message: 'No tweet data source provided.' });
     }
 
-    let processedData;
-    try {
-      processedData = processTweetData(parsedData, timeframe, isPaid);
-      logger.debug(`Processed ${processedData.allTweets.length} tweets for ${analysisType}`);
-    } catch (processingError) {
-      logger.error(`Error processing tweet data for ${analysisType}: ${processingError.message}`);
-      return res.status(500).json({ status: 'error', message: 'Failed to process tweet data', error: process.env.NODE_ENV === 'development' ? processingError.message : undefined });
-    }
-
-    if (!isPaid && options.requiresPremium) {
+    if (!finalIsPaid && options.requiresPremium) {
       const upgradeMessage = options.getUpgradeMessage ? options.getUpgradeMessage(analysisType) : '<p>Upgrade required</p>';
       return res.json({ status: 'success', analysis: upgradeMessage, requiresUpgrade: true });
     }
 
-    const prompt = generatePrompt(processedData, isPaid, timeframe, imageUrl, tweetText);
+    const prompt = generatePrompt(finalProcessedData, finalIsPaid, finalTimeframe, imageUrl, tweetText);
     const maxTokens = options.maxTokens || 1000;
     const startTime = Date.now();
     let analysisResult;

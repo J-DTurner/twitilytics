@@ -1,56 +1,36 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-/**
- * Fetch analysis using session ID (preferred method)
- */
-const fetchAnalysisWithSession = async (endpoint, sessionId, additionalData = {}) => {
-  // console.log(`[AnalysisService] Fetching ${endpoint} analysis with session ID: ${sessionId}`);
-  try {
-    const sessionResponse = await fetch(`${API_BASE_URL}/analyze/session/${sessionId}/raw`);
-    if (!sessionResponse.ok) {
-      const errorData = await sessionResponse.json().catch(() => ({ message: 'Session not found or expired. Please re-upload your file.' }));
-      throw new Error(errorData.message);
-    }
-    
-    const sessionData = await sessionResponse.json();
-    const { rawContent } = sessionData;
-    const isPaidForAnalysis = additionalData.isPaid_explicit !== undefined ? additionalData.isPaid_explicit : sessionData.isPaidUser;
-    const timeframeForAnalysis = additionalData.timeframe_explicit !== undefined ? additionalData.timeframe_explicit : sessionData.timeframe;
-
-    const cleanedAdditionalData = { ...additionalData };
-    delete cleanedAdditionalData.isPaid_explicit;
-    delete cleanedAdditionalData.timeframe_explicit;
-    
-    return await fetchAnalysis(endpoint, rawContent, isPaidForAnalysis, timeframeForAnalysis, cleanedAdditionalData);
-  } catch (error) {
-    console.error(`[AnalysisService] Session fetch error for ${endpoint} (session: ${sessionId}):`, error);
-    throw error;
-  }
-};
 
 /**
  * Legacy fetch analysis using raw content (for backward compatibility)
  */
-const fetchAnalysis = async (endpoint, tweetsJsContent, isPaid, timeframe, additionalData = {}) => {
+const fetchAnalysis = async (endpoint, dataPayload, isPaid, timeframe, additionalData = {}) => {
   console.log(`[AnalysisService] Fetching ${endpoint} analysis. Paid: ${isPaid}, Timeframe: ${timeframe}`);
   const url = `${API_BASE_URL}/analyze/${endpoint}`;
   try {
+    const body = {
+      ...dataPayload, 
+      isPaid,
+      timeframe,
+      analysisType: endpoint,
+      ...additionalData
+    };
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tweetsJsContent, isPaid, timeframe, analysisType: endpoint, ...additionalData })
+      body: JSON.stringify(body)
     });
     if (!response.ok) {
       let errorData;
       try { errorData = await response.json(); }
       catch { const errorText = await response.text(); throw new Error(errorText || `HTTP error ${response.status}`); }
-      const errorMessage = errorData.message || `HTTP error ${response.status}`;
+      const errorMessage = errorData.message || (errorData.errors ? errorData.errors.map(e => e.msg).join(', ') : `HTTP error ${response.status}`);
       const error = new Error(errorMessage);
       error.status = response.status;
       throw error;
     }
     const result = await response.json();
-    if (result.status === 'error') throw new Error(result.message || 'Analysis failed');
+    if (result.status === 'error') throw new Error(result.message || (result.errors ? result.errors.map(e => e.msg).join(', ') : 'Analysis failed'));
     return result;
   } catch (error) {
     console.error(`[AnalysisService] Fetch error for ${endpoint}:`, error);
@@ -62,20 +42,22 @@ const fetchAnalysis = async (endpoint, tweetsJsContent, isPaid, timeframe, addit
  * Smart analysis function that detects if input is session ID or raw content
  */
 const smartFetchAnalysis = async (endpoint, contentOrSessionId, isPaid, timeframe, additionalData = {}) => {
-  // console.log(`[AnalysisService] smartFetch for ${endpoint}. Content type: ${typeof contentOrSessionId}, Starts with session_: ${typeof contentOrSessionId === 'string' && contentOrSessionId.startsWith('session_')}`);
+  let dataPayload;
   if ((typeof contentOrSessionId === 'string' && !contentOrSessionId.startsWith('session_')) || 
-      (endpoint === 'image' && (!contentOrSessionId || typeof contentOrSessionId === 'string'))) { 
-    return await fetchAnalysis(endpoint, contentOrSessionId, isPaid, timeframe, additionalData);
+      (endpoint === 'image' && (!contentOrSessionId || typeof contentOrSessionId === 'string'))) {
+    dataPayload = { tweetsJsContent: contentOrSessionId };
   } 
   else if (typeof contentOrSessionId === 'string' && contentOrSessionId.startsWith('session_')) {
-    // console.warn(`[AnalysisService] smartFetchAnalysis called with sessionID for ${endpoint}. This should be a fallback.`);
-    const sessionAdditionalData = { ...additionalData, isPaid_explicit: isPaid, timeframe_explicit: timeframe };
-    return await fetchAnalysisWithSession(endpoint, contentOrSessionId, sessionAdditionalData);
+    dataPayload = { dataSessionId: contentOrSessionId };
   } 
+  else if (endpoint === 'image') { 
+    dataPayload = { tweetsJsContent: null }; 
+  }
   else {
     console.error(`[AnalysisService] Invalid contentOrSessionId for ${endpoint}:`, contentOrSessionId);
-    throw new Error(`Invalid data provided for ${endpoint} analysis (contentOrSessionId was type ${typeof contentOrSessionId}).`);
+    throw new Error(`Invalid data source for ${endpoint} analysis.`);
   }
+  return await fetchAnalysis(endpoint, dataPayload, isPaid, timeframe, additionalData);
 };
 
 export const getFullScrapedAnalysis = async (twitterHandle, paymentSessionId, timeframe, numBlocks) => {

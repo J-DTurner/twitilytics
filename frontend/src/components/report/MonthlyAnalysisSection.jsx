@@ -9,8 +9,8 @@ import { getMonthlyAnalysis as fetchMonthlyAnalysis } from '../../services/analy
  * trends and patterns in the user's Twitter activity on a month-by-month basis.
  * It's a premium feature that requires a paid account.
  */
-const MonthlyAnalysisSection = ({ initialRawContent }) => {
-  const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent } = useTweetData();
+const MonthlyAnalysisSection = () => {
+  const { rawTweetsJsContent, isPaidUser, timeframe, dataSource, allAnalysesContent, dataSessionId } = useTweetData();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,11 +24,11 @@ useEffect(() => {
     setError(null);
     setIsLocked(false); // Scrapes are inherently "paid"
   } else if (dataSource?.type === 'file') {
-    if (initialRawContent) { // Use the prop
+    if (dataSessionId) {
       setLoading(true);
       setError(null);
       setIsLocked(false);
-      fetchMonthlyAnalysis(initialRawContent, isPaidUser, timeframe) // Call service with actual raw content
+      fetchMonthlyAnalysis(dataSessionId, isPaidUser, timeframe)
         .then(result => {
           if (result.requiresUpgrade && !isPaidUser) { // Only lock if actually not paid
             setIsLocked(true);
@@ -41,23 +41,22 @@ useEffect(() => {
         })
         .finally(() => setLoading(false));
     } else {
-      setLoading(true); // Waiting for ReportPage to provide raw content
+      setLoading(true); // Waiting for data session ID
     }
   } else {
     setLoading(false);
     // setError("Appropriate data source not available for analysis."); // Or rely on ReportPage error
   }
-// Add initialRawContent to the dependency array
-}, [dataSource, allAnalysesContent, initialRawContent, isPaidUser, timeframe]);
+}, [dataSource, allAnalysesContent, dataSessionId, isPaidUser, timeframe]);
   
 const handleRetry = () => {
   if (dataSource?.type === 'file') {
-    if (!initialRawContent) { // Check prop
-      setError('Cannot retry: analysis content is missing.');
+    if (!dataSessionId) {
+      setError('Cannot retry: data session ID is missing.');
       return;
     }
     setLoading(true); setError(null); setIsLocked(false);
-    fetchMonthlyAnalysis(initialRawContent, isPaidUser, timeframe) // Use prop
+    fetchMonthlyAnalysis(dataSessionId, isPaidUser, timeframe)
       .then(res => {
         if (res.requiresUpgrade && !isPaidUser) { 
           setIsLocked(true); 
