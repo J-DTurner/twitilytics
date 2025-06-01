@@ -1,41 +1,35 @@
-Task completed successfully. Updated PaymentVerification.jsx to handle the {CHECKOUT_SESSION_ID} placeholder by polling the new internal status endpoint.
+Task completed successfully. Adjusted the useEffect hook in PaymentVerification.jsx to handle the {CHECKOUT_SESSION_ID} placeholder more gracefully.
 
-Major changes made:
+Key changes made:
 
-1. Added imports and constants:
-   - Added useRef import for poll count tracking
-   - Added verifyPaymentByInternalId import from paymentService
-   - Added POLLING_INTERVAL (3 seconds) and MAX_POLLS (20 attempts = 1 minute) constants
+1. Updated state management:
+   - Added intervalIdRef to store interval ID for proper cleanup
+   - Modified processSuccessfulPayment to explicitly set verifying to false
 
-2. Created processSuccessfulPayment helper function:
-   - Extracted payment success logic to be reusable by both verification paths
-   - Takes result and polarCheckoutId parameters
-   - Handles both scrape and file upload data source updates
-   - Clears localStorage and navigates to report
+2. Enhanced placeholder handling:
+   - When polarCheckoutSessionIdFromUrl === '{CHECKOUT_SESSION_ID}', the component now:
+     - Sets statusMessage to "Finalizing payment confirmation... This may take a moment."
+     - Explicitly sets error to null (clearing any previous errors)
+     - Keeps verifying state as true to show spinner
+     - Does NOT immediately set an error state
 
-3. Added attemptVerification function:
-   - Encapsulates normal Polar session ID verification flow
-   - Uses existing verifyPaymentStatus service
-   - Calls processSuccessfulPayment on success
+3. Improved polling function (startPollingInternalStatus):
+   - Sets proper status message for user feedback during polling
+   - Clears any previous errors before starting
+   - Only sets error state on timeout or definitive payment failure
+   - Enhanced logging for better debugging
 
-4. Added pollInternalStatus function:
-   - Implements polling mechanism for internal session ID verification
-   - Sets appropriate status message for user feedback
-   - Uses setInterval to poll every 3 seconds up to 20 times
-   - Handles timeout, success, and failure scenarios
-   - Logs each polling attempt for debugging
-   - Stops polling on non-pending payment status
+4. Added cleanup functionality:
+   - useEffect now returns cleanup function to clear intervals on unmount
+   - Prevents memory leaks if component unmounts during polling
 
-5. Updated main useEffect logic:
-   - Extracts internalAnalysisSessionId from URL parameters
-   - Detects {CHECKOUT_SESSION_ID} placeholder
-   - Routes to pollInternalStatus when placeholder detected
-   - Falls back to normal verification for actual session IDs
-   - Enhanced error handling for missing internal IDs
+5. Better variable naming:
+   - Renamed internalAnalysisSessionId to internalIdFromUrl for clarity
+   - More descriptive function names (attemptDirectVerification, startPollingInternalStatus)
 
-6. Enhanced URL parameter handling:
-   - Uses data_session_id or customer_external_id as internal session ID
-   - These parameters are reliably passed in success_url during checkout creation
-   - Provides fallback verification when Polar's session_id is problematic
+6. Enhanced error handling:
+   - Errors are only set when polling times out or returns definitive failure
+   - More user-friendly error messages with specific guidance
+   - Better distinction between timeout and payment failure scenarios
 
-This implementation provides a robust fallback mechanism when Polar fails to replace the {CHECKOUT_SESSION_ID} placeholder, using webhook-confirmed payment status stored in sessionManager to verify payments via internal session identifiers.
+This implementation provides a smoother user experience when Polar fails to replace the placeholder, showing a loading state instead of an immediate error while the system attempts to verify payment through internal polling.
