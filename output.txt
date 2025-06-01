@@ -1,9 +1,36 @@
-Task completed successfully. Verified that payment.js correctly passes the Price ID with the expected key structure.
+Task completed successfully. Modified the /scrape-and-analyze route in backend/routes/analysis.js to implement critical backend security changes that verify the paymentSessionId and use parameters from Polar's metadata instead of blindly trusting client input.
 
-Verification Results:
-1. The `polarCheckoutParams` object in payment.js uses `product_price_id` as the key for the price ID (lines 62 and 371)
-2. The CheckoutsAPI.create method (modified in Backend Step 1) correctly takes `params.product_price_id` and places it inside the `products` array
-3. The parameter passing mechanism remains compatible between payment.js and the updated CheckoutsAPI.create method
-4. No code changes are required in payment.js for this structural change
+Changes made:
+1. Added Polar client imports:
+   - getPolarClient from '../utils/polar/clientCache'
+   - resolvePolarEnv from '../utils/polar/resolvePolarEnv'
+   - PolarAPIError from '../utils/polar/errors'
 
-The integration between payment.js and checkouts.js is properly maintained after the Backend Step 1 modifications.
+2. Modified request validation:
+   - paymentSessionId is now required (Polar's checkout session ID)
+   - numBlocks is now optional for context only, will be overridden by verified metadata
+   - Updated variable names for clarity (requestedHandle, requestedNumBlocks)
+
+3. Implemented payment verification before scraping:
+   - Uses paymentSessionId to fetch checkout session details from Polar
+   - Checks if polarSession.status === 'succeeded' 
+   - Extracts verifiedTwitterHandle, verifiedNumBlocks, and verifiedScrapeJobId from metadata
+   - Validates all required parameters are present and valid
+   - Compares requested handle with verified handle for security
+
+4. Updated scraping logic to use verified parameters:
+   - Uses verifiedTwitterHandle and verifiedNumBlocks for Apify searchTerms and maxItems
+   - Adds verified parameters to processed data for context
+   - Enhanced logging with verified parameters
+
+5. Enhanced error handling:
+   - Added specific handling for PolarAPIError (404 for session not found)
+   - Improved error messages with specific payment status information
+   - Added comprehensive logging for verification outcomes
+
+6. Security improvements:
+   - Prevents tampering by validating all scrape parameters come from verified Polar metadata
+   - Logs mismatches between requested and verified parameters
+   - Ensures only successful payments can trigger scraping
+
+The route now securely verifies payment status and parameters through Polar before executing any scraping operations, preventing unauthorized or manipulated scrape requests.

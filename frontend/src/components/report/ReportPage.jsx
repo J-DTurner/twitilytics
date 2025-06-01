@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTweetData } from '../../context/TweetDataContext';
-import { getFullScrapedAnalysis } from '../../services/analysisService'; // Assuming this exists
-import { apiRequest } from '../../utils/api'; // For fetching session data
+import { getFullScrapedAnalysis } from '../../services/analysisService';
+import { apiRequest } from '../../utils/api';
 import html2pdf from 'html2pdf.js';
-// ... other imports
 import ReportHeader from './ReportHeader';
 import ExecutiveSummarySection from './ExecutiveSummarySection';
 import ActivityAnalysisSection from './ActivityAnalysisSection';
@@ -18,137 +17,163 @@ import TwitterActivityChart from './TwitterActivityChart';
 import UpgradePrompt from './UpgradePrompt';
 import ReportFooter from './ReportFooter';
 
-
 const ReportPage = () => {
   const navigate = useNavigate();
   const { 
-    processedData, // This is the data from the file upload process
-    dataSessionId, // This is the server-side session ID for the uploaded file's data
+    processedData, 
+    dataSessionId, // This is our internal analysis session ID for uploaded files
     isPaidUser, 
     updateTimeframe, 
     dataSource, 
     allAnalysesContent, 
     setFullAnalyses, 
-    paymentSessionId, // This is Polar's checkout session ID
-    updateProcessedDataAndSessionId // Function to update context
+    // paymentSessionId, // This is Polar's checkout ID, now part of dataSource for relevant type
+    updateProcessedDataAndSessionId 
   } = useTweetData();
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfError, setPdfError] = useState(null);
-  const [currentTimeframe, setCurrentTimeframe] = useState(dataSource?.timeframe || 'all');
-  const [loading, setLoading] = useState(false);
+  // Initialize currentTimeframe from dataSource if available, else from context's timeframe, or default
+  const [currentTimeframe, setCurrentTimeframe] = useState(dataSource?.timeframe || useTweetData().timeframe || 'all');
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [pageError, setPageError] = useState(null);
   const reportContentRef = useRef(null);
 
-  // Handle data loading based on dataSource
   useEffect(() => {
     setLoading(true);
     setPageError(null);
+    console.log("[ReportPage] useEffect triggered. DataSource:", dataSource);
 
     if (dataSource?.type === 'username') {
-      // This is for scrape-and-analyze flow
-      if (!allAnalysesContent && dataSource.handle && paymentSessionId) {
-        getFullScrapedAnalysis(dataSource.handle, paymentSessionId, currentTimeframe, dataSource.blocks)
+      console.log("[ReportPage] Scrape analysis detected.");
+      if (dataSource.handle && dataSource.paymentSessionId && !isNaN(dataSource.blocks)) {
+        // If allAnalysesContent is already present and matches current timeframe and handle/blocks, skip fetch.
+        // This simplistic check might need refinement if allAnalysesContent could be stale for other reasons.
+        if (allAnalysesContent && 
+            allAnalysesContent.processedData?.timeframe === currentTimeframe &&
+            allAnalysesContent.processedData?.twitterHandle === dataSource.handle && // Assuming processedData stores this
+            allAnalysesContent.processedData?.numBlocks === dataSource.blocks // Assuming processedData stores this
+            ) {
+            console.log("[ReportPage] Scrape data already in context for current params.");
+            setLoading(false);
+            return;
+        }
+
+        console.log("[ReportPage] Fetching full scraped analysis...");
+        getFullScrapedAnalysis(dataSource.handle, dataSource.paymentSessionId, currentTimeframe, dataSource.blocks)
           .then(res => {
             if (res.analyses) {
+              console.log("[ReportPage] Scraped analysis fetched successfully.");
               setFullAnalyses(res.analyses);
-              // If processTweetData was part of scrape analysis, update processedData
               if (res.analyses.processedData) {
-                 updateProcessedDataAndSessionId(res.analyses.processedData, dataSource.scrapeJobId || paymentSessionId, false);
+                 // The scrapeJobId is the unique identifier for this scrape instance
+                 updateProcessedDataAndSessionId(res.analyses.processedData, dataSource.scrapeJobId, false); 
               }
             } else {
-              setPageError("Failed to load scraped analysis data.");
+              console.error("[ReportPage] Failed to load scraped analysis data, no 'analyses' key in response:", res);
+              setPageError(res.message || "Failed to load scraped analysis data.");
             }
           })
           .catch(err => {
-            console.error("Error fetching scraped analysis:", err);
+            console.error("[ReportPage] Error fetching scraped analysis:", err);
             setPageError(`Failed to load report: ${err.message}`);
           })
           .finally(() => setLoading(false));
-      } else if (allAnalysesContent) {
-        setLoading(false); // Already have content
       } else {
+         console.warn("[ReportPage] Missing required data for scrape analysis in dataSource:", dataSource);
          setPageError("Missing required data for scrape analysis.");
          setLoading(false);
       }
     } else if (dataSource?.type === 'file') {
-      // This is for file upload flow
-      if (dataSource.dataSessionId && (!processedData || dataSessionId !== dataSource.dataSessionId)) {
-        // If context's dataSessionId (from previous upload) doesn't match dataSource.dataSessionId (from payment verification),
-        // or if processedData is missing, fetch it from server using the session ID.
-        apiRequest('GET', `/analyze/session/${dataSource.dataSessionId}`)
-          .then(resData => { // resData is already parsed JSON if apiRequest handles it
-            if (resData.status === 'success' && resData.processedData) {
-              updateProcessedDataAndSessionId(resData.processedData, dataSource.dataSessionId, true);
-              setCurrentTimeframe(resData.timeframe || 'all'); // Sync timeframe
-            } else {
-              throw new Error(resData.message || 'Failed to retrieve session data.');
-            }
-          })
-          .catch(err => {
-            console.error("Error fetching file session data:", err);
-            setPageError(`Failed to load your analysis session: ${err.message}. Please try re-uploading.`);
-          })
-          .finally(() => setLoading(false));
-      } else if (processedData && dataSessionId === dataSource.dataSessionId) {
-        setLoading(false); // Data is already in context and matches
+      console.log("[ReportPage] File analysis detected.");
+      if (dataSource.dataSessionId) {
+        // Check if data in context matches the required session ID
+        if (processedData && dataSessionId === dataSource.dataSessionId && processedData.timeframe === currentTimeframe) {
+          console.log("[ReportPage] File data already in context for current session and timeframe.");
+          setLoading(false);
+        } else {
+          console.log("[ReportPage] Fetching file session data from server for session:", dataSource.dataSessionId);
+          // Fetch session data (which includes processedData) from the backend
+          apiRequest('GET', `/analyze/session/${dataSource.dataSessionId}`)
+            .then(resData => {
+              if (resData.status === 'success' && resData.processedData) {
+                console.log("[ReportPage] File session data fetched successfully.");
+                updateProcessedDataAndSessionId(resData.processedData, dataSource.dataSessionId, true); // Persist metadata
+                // If timeframe from session is different, update component state and context
+                if (resData.timeframe && resData.timeframe !== currentTimeframe) {
+                    setCurrentTimeframe(resData.timeframe);
+                    updateTimeframe(resData.timeframe); // Update context timeframe
+                }
+              } else {
+                throw new Error(resData.message || 'Failed to retrieve session data.');
+              }
+            })
+            .catch(err => {
+              console.error("[ReportPage] Error fetching file session data:", err);
+              setPageError(`Failed to load your analysis session: ${err.message}. Please try re-uploading.`);
+            })
+            .finally(() => setLoading(false));
+        }
       } else {
-         // This case means dataSource.type is 'file' but dataSource.dataSessionId is missing,
-         // or processedData is missing and no dataSessionId to fetch.
-         setPageError("Analysis session ID is missing. Please re-upload your file.");
+         console.warn("[ReportPage] File analysis type but dataSessionId is missing in dataSource:", dataSource);
+         setPageError("Analysis session ID is missing for file. Please re-upload your file.");
          setLoading(false);
       }
     } else {
-      // No valid dataSource or data
+      console.warn("[ReportPage] No valid dataSource found or data is incomplete.");
       setPageError("No analysis data found. Please start by uploading a file or analyzing a username.");
       setLoading(false);
-      setTimeout(() => navigate('/'), 3000);
+      // setTimeout(() => navigate('/'), 3000); // Avoid auto-redirect if user is trying to fix
     }
   }, [
       dataSource, 
-      paymentSessionId, // Polar's checkout ID
-      dataSessionId, // Twitilytics's internal analysis session ID for files
-      processedData, 
+      // paymentSessionId, // Now part of dataSource
+      dataSessionId,    // From context, to compare with dataSource.dataSessionId
+      processedData,    // From context
       allAnalysesContent, 
       currentTimeframe, 
       setFullAnalyses, 
       updateProcessedDataAndSessionId, 
+      updateTimeframe, // Added updateTimeframe
       navigate
     ]);
   
-  // Handle timeframe change
   const handleTimeframeChange = (newTimeframe) => {
+    console.log("[ReportPage] Timeframe changed to:", newTimeframe);
     setCurrentTimeframe(newTimeframe);
-    updateTimeframe(newTimeframe); // Update context, which might trigger re-processing or re-fetching in other components
-    // If it's a scrape, re-fetch full analysis for new timeframe
-    if (dataSource?.type === 'username' && dataSource.handle && paymentSessionId) {
+    updateTimeframe(newTimeframe); 
+    // The main useEffect will re-run due to currentTimeframe change if dataSource is 'username',
+    // or individual analysis sections will re-fetch because `timeframe` in context changes.
+    // Forcing a reload if it's a username scrape:
+    if (dataSource?.type === 'username' && dataSource.handle && dataSource.paymentSessionId && !isNaN(dataSource.blocks)) {
       setLoading(true);
-      getFullScrapedAnalysis(dataSource.handle, paymentSessionId, newTimeframe, dataSource.blocks)
+      getFullScrapedAnalysis(dataSource.handle, dataSource.paymentSessionId, newTimeframe, dataSource.blocks)
         .then(res => {
             if (res.analyses) {
               setFullAnalyses(res.analyses);
               if (res.analyses.processedData) {
-                 updateProcessedDataAndSessionId(res.analyses.processedData, dataSource.scrapeJobId || paymentSessionId, false);
+                 updateProcessedDataAndSessionId(res.analyses.processedData, dataSource.scrapeJobId, false);
               }
             } else {
                setPageError("Failed to reload analysis for new timeframe.");
             }
         })
-        .catch(err => setPageError(`Failed to reload report for timeframe ${newTimeframe}: ${err.message}`))
+        .catch(err => {
+          console.error(`[ReportPage] Error reloading scrape for timeframe ${newTimeframe}:`, err);
+          setPageError(`Failed to reload report for timeframe ${newTimeframe}: ${err.message}`);
+        })
         .finally(() => setLoading(false));
     }
-    // For file uploads, analysis components re-fetch their data based on timeframe & rawTweetsJsContent (dataSessionId)
+    // For file uploads, components like ExecutiveSummarySection will re-fetch using the new `timeframe` from context.
   };
 
-  // Handle PDF generation (content unchanged)
+  // ... (handleGeneratePDF remains mostly the same, ensure it uses `reportContentRef`) ...
   const handleGeneratePDF = async () => {
     if (!reportContentRef.current) return;
     if (!isPaidUser) {
-        // Find the upgrade prompt section or button
-        const upgradeElement = document.getElementById('file-upload'); // Or a more specific ID if UpgradePrompt is always rendered
+        const upgradeElement = document.getElementById('upgrade-prompt-section') || document.getElementById('file-upload'); 
         if (upgradeElement) {
             upgradeElement.scrollIntoView({ behavior: 'smooth' });
-            // Optionally, highlight the upgrade section or show a toast
              alert('PDF export is a premium feature. Please complete the payment to unlock.');
         } else {
             alert('PDF export is a premium feature. Please upgrade to access.');
@@ -159,81 +184,72 @@ const ReportPage = () => {
     setIsGeneratingPDF(true);
     setPdfError(null);
     const element = reportContentRef.current;
-    // Temporarily make all report sections visible for PDF generation
-    const sections = element.querySelectorAll('.report-section');
-    const originalDisplayValues = [];
-    sections.forEach(section => {
-        originalDisplayValues.push({el: section, display: section.style.display});
-        section.style.display = 'block'; // Or appropriate display value
-    });
+    const sections = Array.from(element.querySelectorAll('.report-section'));
+    const originalDisplayValues = sections.map(section => ({el: section, display: section.style.display}));
+    sections.forEach(section => { section.style.display = 'block'; });
 
-    // Ensure charts are rendered as images
-    const canvases = element.querySelectorAll('canvas');
+    const canvases = Array.from(element.querySelectorAll('canvas'));
     const imagesToRestore = [];
     canvases.forEach(canvas => {
         try {
             const img = document.createElement('img');
-            img.src = canvas.toDataURL('image/png');
+            img.src = canvas.toDataURL('image/png', 1.0); // Use PNG with high quality
             img.style.maxWidth = '100%';
             img.style.height = 'auto';
-            img.style.display = 'block'; // Ensure img takes up space
-            img.style.margin = '0 auto'; // Center if needed
+            img.style.display = 'block'; 
+            img.style.margin = '10px auto'; // Add some margin for spacing in PDF
             canvas.parentNode.insertBefore(img, canvas);
-            canvas.style.display = 'none'; // Hide original canvas
+            canvas.style.display = 'none'; 
             imagesToRestore.push({canvas, img});
         } catch (e) {
             console.warn("Could not convert canvas to image for PDF:", e);
         }
     });
 
-
-    const filename = `Twitilytics_Report_${dataSource?.handle || dataSource?.fileName || 'Twitter'}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const filenameBase = dataSource?.type === 'username' ? dataSource.handle : (processedData?.fileName || 'TwitterAnalysis');
+    const filename = `Twitilytics_Report_${filenameBase.replace('.js', '')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    
     const options = {
-      margin: [10, 5, 10, 5], // Reduced margin [top, left, bottom, right] in mm
+      margin: [10, 8, 10, 8], 
       filename,
-      image: { type: 'jpeg', quality: 0.95 },
+      image: { type: 'jpeg', quality: 0.98 }, // High quality JPEG
       html2canvas: { 
         scale: 2, 
         useCORS: true, 
         logging: false,
-        // Try to capture full page content dynamically
         width: element.scrollWidth, 
         height: element.scrollHeight,
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
+        removeContainer: true // Try to clean up proxy
        },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'], after: '.report-section' }
+      pagebreak: { mode: ['css', 'legacy'], after: '.report-section' } // Avoid 'avoid-all' which can be problematic
     };
     try {
       await html2pdf().from(element).set(options).save();
     } catch (err) {
       console.error('Error generating PDF:', err);
-      setPdfError('Failed to generate PDF. Please try again.');
+      setPdfError('Failed to generate PDF. Error: ' + err.message + '. Please try again.');
     } finally {
       setIsGeneratingPDF(false);
-      // Restore original canvas and remove temp images
       imagesToRestore.forEach(({canvas, img}) => {
-          if (img.parentNode) {
-            img.parentNode.removeChild(img);
-          }
+          if (img.parentNode) { img.parentNode.removeChild(img); }
           canvas.style.display = '';
       });
-      // Restore original display values for sections if they were changed
-      originalDisplayValues.forEach(item => {
-        item.el.style.display = item.display;
-      });
+      originalDisplayValues.forEach(item => { item.el.style.display = item.display; });
     }
   };
 
+
   if (loading) {
     return (
-      <div className="report-placeholder">
-        <div className="container">
+      <div className="report-placeholder" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh'}}>
+        <div className="container" style={{textAlign: 'center'}}>
           <div className="placeholder-content">
             <h1>Generating Your Report</h1>
             <p>Please wait while we analyze the data...</p>
-            <div className="spinner"></div>
+            <div className="spinner" style={{margin: '20px auto'}}></div>
           </div>
         </div>
       </div>
@@ -242,11 +258,11 @@ const ReportPage = () => {
 
   if (pageError) {
     return (
-      <div className="report-placeholder">
-        <div className="container">
-          <div className="placeholder-content error-container">
-            <h1>Error Loading Report</h1>
-            <p>{pageError}</p>
+      <div className="report-placeholder" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh'}}>
+        <div className="container" style={{textAlign: 'center'}}>
+          <div className="placeholder-content error-container" style={{background: 'var(--error-lighter)', padding: '2rem', borderRadius: 'var(--border-radius)'}}>
+            <h1 style={{color: 'var(--error-dark)'}}>Error Loading Report</h1>
+            <p style={{color: 'var(--error-dark)'}}>{pageError}</p>
             <Link to="/" className="btn btn-primary btn-md mt-4">
               Return to Homepage
             </Link>
@@ -257,18 +273,21 @@ const ReportPage = () => {
   }
   
   // Determine if we have the necessary data to render a report
-  const canRenderReport = (dataSource?.type === 'username' && allAnalysesContent) || 
-                          (dataSource?.type === 'file' && processedData && dataSessionId === dataSource.dataSessionId);
+  // For file, we need processedData AND the dataSessionId in context should match dataSource
+  const canRenderFileReport = dataSource?.type === 'file' && 
+                              processedData && 
+                              dataSource.dataSessionId && 
+                              dataSessionId === dataSource.dataSessionId;
+  // For scrape, we need allAnalysesContent
+  const canRenderScrapeReport = dataSource?.type === 'username' && allAnalysesContent;
 
-  if (!canRenderReport) {
-     // This case should ideally be caught by the loading/error states above,
-     // but as a fallback if dataSource is somehow invalid or data mismatch occurs.
+  if (!canRenderFileReport && !canRenderScrapeReport) {
     return (
-      <div className="report-placeholder">
-        <div className="container">
+      <div className="report-placeholder" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh'}}>
+        <div className="container" style={{textAlign: 'center'}}>
           <div className="placeholder-content">
-            <h1>Preparing Report</h1>
-            <p>Loading analysis data. If this persists, please try starting over.</p>
+            <h1>Report Data Not Ready</h1>
+            <p>We are having trouble loading your report data. This might be due to a recent navigation or incomplete data loading. Please ensure you have completed the previous steps, or try starting over.</p>
             <Link to="/" className="btn btn-primary btn-md mt-4">
               Start Over
             </Link>
@@ -281,8 +300,8 @@ const ReportPage = () => {
   return (
     <div className="report-page">
       <ReportHeader 
-        activeTab={'summary'} /* This needs to be dynamic if tabs are implemented */
-        onTabChange={(tabId) => console.log('Tab changed to:', tabId)} /* Placeholder */
+        activeTab={'summary'} 
+        onTabChange={(tabId) => console.log('Tab changed to:', tabId)} 
         timeframe={currentTimeframe}
         onTimeframeChange={handleTimeframeChange}
         onGeneratePDF={handleGeneratePDF}
@@ -292,16 +311,14 @@ const ReportPage = () => {
       
       <div ref={reportContentRef} className="report-content">
         <div className="container">
-          {/* Render sections; they internally use useTweetData to get relevant content */}
           <ExecutiveSummarySection />
           <ActivityAnalysisSection />
-          <TwitterActivityChart /> {/* This uses processedData from context */}
+          <TwitterActivityChart /> 
           
-          {/* Premium features might show locked state based on isPaidUser */}
           <TopicAnalysisSection />
           <EngagementAnalysisSection />
           
-          {!isPaidUser && (
+          {!isPaidUser && dataSource?.type === 'file' && ( // Show upgrade prompt only for file uploads if not paid
             <div className="upgrade-section" id="upgrade-prompt-section">
               <UpgradePrompt />
             </div>

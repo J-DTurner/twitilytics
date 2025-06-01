@@ -8,6 +8,9 @@ const { parseTweetsJS, processTweetData } = require('../utils/tweetProcessor');
 const logger = require('../utils/logger');
 const multer = require('multer');
 const sessionManager = require('../utils/sessionManager');
+const { getPolarClient } = require('../utils/polar/clientCache');
+const { resolvePolarEnv } = require('../utils/polar/resolvePolarEnv');
+const { PolarAPIError } = require('../utils/polar/errors');
 
 const upload = multer();
 
@@ -645,51 +648,99 @@ function generateActivityAnalysisPrompt(data, isPaid, timeframe) {
  */
 router.post('/scrape-and-analyze', [
   body('twitterHandle').isString().notEmpty().withMessage('Twitter handle is required'),
-  body('paymentSessionId').isString().notEmpty().withMessage('Payment session ID is required'),
+  body('paymentSessionId').isString().notEmpty().withMessage('Payment session ID is required'), // Polar's checkout ID
   body('timeframe').optional().isString().withMessage('Timeframe must be a string'),
-  body('numBlocks').isInt({ min: 1, max: 100 }).withMessage('Number of blocks must be an integer between 1 and 100'),
+  // numBlocks from request body is now mainly for context, will be overridden by verified metadata
+  body('numBlocks').optional().isInt({ min: 1, max: 100 }).withMessage('Number of blocks is for context'),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        status: 'error', 
-        errors: errors.array() 
-      });
+      return res.status(400).json({ status: 'error', errors: errors.array() });
     }
     next();
   }
 ], async (req, res) => {
   try {
-    const { twitterHandle, paymentSessionId, timeframe = 'all', numBlocks } = req.body;
-    
-    // Verify payment
-    const payment = await verifyStripeSession(paymentSessionId);
-    if (!payment.paid) {
-      return res.status(402).json({ status: 'error', message: payment.message });
+    const { twitterHandle: requestedHandle, paymentSessionId, timeframe = 'all' } = req.body;
+    // requestedNumBlocks is for logging/context, actual numBlocks comes from verified payment metadata
+    const requestedNumBlocks = req.body.numBlocks; 
+
+    logger.info('Received scrape-and-analyze request', { requestedHandle, paymentSessionId, timeframe, requestedNumBlocks });
+
+    // --- Payment Verification Step ---
+    const polarEnv = resolvePolarEnv(req); // Determine env (prod/sandbox)
+    const polarClient = getPolarClient(polarEnv);
+    let polarSession;
+    try {
+        polarSession = await polarClient.checkouts.get(paymentSessionId);
+    } catch (polarError) {
+        if (polarError instanceof PolarAPIError && polarError.statusCode === 404) {
+            logger.warn('Polar checkout session not found for scrape-and-analyze', { paymentSessionId });
+            return res.status(404).json({ status: 'error', message: 'Payment session not found.' });
+        }
+        logger.error('Error fetching Polar session for verification', { paymentSessionId, error: polarError.message });
+        throw polarError; // Rethrow for generic error handling
+    }
+
+    if (polarSession.status !== 'succeeded') {
+      logger.warn('Payment not successful for Polar session', { paymentSessionId, status: polarSession.status });
+      return res.status(402).json({ status: 'error', message: `Payment not completed (Status: ${polarSession.status}).` });
+    }
+
+    const { metadata } = polarSession;
+    if (!metadata) {
+        logger.error('Polar session metadata missing for scrape-and-analyze', { paymentSessionId });
+        return res.status(400).json({ status: 'error', message: 'Payment metadata missing, cannot verify scrape parameters.' });
+    }
+
+    const verifiedTwitterHandle = metadata.twitterHandle;
+    const verifiedNumBlocks = parseInt(metadata.numBlocks, 10); // Ensure it's a number
+    const verifiedScrapeJobId = metadata.scrapeJobId;
+
+    if (!verifiedTwitterHandle || isNaN(verifiedNumBlocks) || verifiedNumBlocks < 1) {
+        logger.error('Invalid or missing scrape parameters in Polar metadata', { paymentSessionId, metadata });
+        return res.status(400).json({ status: 'error', message: 'Verified scrape parameters invalid.' });
+    }
+
+    // Security Check: Compare requested handle with verified handle from payment.
+    // While frontend sends requestedHandle, we should primarily trust verifiedTwitterHandle.
+    // If there's a mismatch, it might indicate an issue or tampering attempt.
+    if (requestedHandle.toLowerCase() !== verifiedTwitterHandle.toLowerCase()) {
+        logger.warn('Mismatch between requested Twitter handle and verified handle from payment metadata', {
+            requestedHandle,
+            verifiedTwitterHandle,
+            paymentSessionId
+        });
+        // Decide on policy: error out, or proceed with verifiedTwitterHandle?
+        // Safest is to error if mismatch is significant or unexpected.
+        // For now, we'll log and proceed with VERIFIED handle.
+        // Or, stricter:
+        // return res.status(400).json({ status: 'error', message: 'Twitter handle mismatch with payment record.' });
     }
     
-    // Verify payment session details match request
-    if (payment.metadata.twitterHandle !== twitterHandle || parseInt(payment.metadata.numBlocks) !== numBlocks) {
-      return res.status(400).json({ status: 'error', message: 'Payment session details mismatch.' });
-    }
+    logger.info('Payment verified for scrape-and-analyze', { 
+        paymentSessionId, 
+        verifiedTwitterHandle, 
+        verifiedNumBlocks,
+        verifiedScrapeJobId 
+    });
+    // --- End Payment Verification Step ---
     
-    // Prepare Apify scraping request
     const apifyInput = { 
-      searchTerms: [`from:${twitterHandle}`], 
-      maxItems: numBlocks * 1000 
+      searchTerms: [`from:${verifiedTwitterHandle}`], 
+      maxItems: verifiedNumBlocks * 1000 // Use VERIFIED numBlocks
     };
     const apifyUrl = `https://api.apify.com/v2/acts/apidojo~tweet-scraper/run-sync-get-dataset-items?token=${process.env.APIFY_API_TOKEN}`;
     
-    logger.info('Starting Apify scrape', { twitterHandle, numBlocks, maxItems: apifyInput.maxItems });
+    logger.info('Starting Apify scrape with verified parameters', { twitterHandle: verifiedTwitterHandle, numBlocks: verifiedNumBlocks, maxItems: apifyInput.maxItems });
     
-    // Scrape tweets via Apify
-    const apifyRes = await axios.post(apifyUrl, apifyInput, { timeout: 180000 });
+    const apifyRes = await axios.post(apifyUrl, apifyInput, { timeout: 180000 }); // 3 min timeout
     const items = Array.isArray(apifyRes.data) ? apifyRes.data : [];
     
-    logger.info(`Apify scraping completed`, { itemsReceived: items.length });
+    logger.info(`Apify scraping completed for ${verifiedTwitterHandle}`, { itemsReceived: items.length });
     
-    // Map Apify data to expected tweet format
     const tweets = items.map(item => ({
+      // ... (mapping remains the same) ...
       id_str: item.id || item.tweetId || item.tweet_id,
       full_text: item.text || item.full_text || item.content,
       favorite_count: item.likes || item.favorite_count || 0,
@@ -699,52 +750,64 @@ router.post('/scrape-and-analyze', [
       entities: item.entities || {}
     })).filter(t => t.full_text && t.id_str);
     
-    logger.info(`Processed tweets`, { tweetCount: tweets.length });
+    logger.info(`Processed tweets from Apify for ${verifiedTwitterHandle}`, { tweetCount: tweets.length });
     
-    // Process tweet data
-    const processed = processTweetData(tweets, timeframe, true);
+    if (tweets.length === 0) {
+        logger.warn(`No tweets found after Apify scrape and processing for ${verifiedTwitterHandle}.`);
+        // Consider returning a specific message if no tweets are found
+        // return res.status(200).json({ status: 'success', analyses: { message: 'No public tweets found for this user to analyze.' }, itemsReceived: items.length });
+    }
     
-    // Run AI analyses
+    // Process tweet data using the verified parameters. isPaid is true for scrapes.
+    const processed = processTweetData(tweets, timeframe, true); 
+    // Add twitterHandle and numBlocks to processedData for context if needed by frontend/AI
+    processed.twitterHandle = verifiedTwitterHandle;
+    processed.numBlocks = verifiedNumBlocks;
+    processed.scrapeJobId = verifiedScrapeJobId;
+    processed.timeframe = timeframe; // ensure timeframe used for processing is part of processed data
+    
     const analyses = {};
     const analysisTypes = [
       { key: 'executiveSummary', fn: generateExecutiveSummaryPrompt },
       { key: 'activityAnalysis', fn: generateActivityAnalysisPrompt }
+      // Add other relevant analyses for scrapes if different from file uploads
     ];
     
     for (const a of analysisTypes) {
-      const prompt = a.fn(processed, true, timeframe);
+      const prompt = a.fn(processed, true, timeframe); // isPaid is true
       analyses[a.key] = await callDeepSeekAPI(prompt, 1000);
     }
     
-    // Include processed data
-    analyses.processedData = processed;
+    analyses.processedData = processed; // Include the processed data object
     
-    logger.info('Scrape and analyze completed successfully', { twitterHandle, analysisKeys: Object.keys(analyses) });
+    logger.info('Scrape and analyze completed successfully', { twitterHandle: verifiedTwitterHandle, analysisKeys: Object.keys(analyses) });
     
     res.json({ status: 'success', analyses });
   } catch (error) {
-    logger.error('Error in scrape-and-analyze:', error);
+    // ... (error handling remains largely the same) ...
+    logger.error('Error in scrape-and-analyze:', error.message, { stack: error.stack, data: error.data });
     
-    let statusCode = 500;
+    let statusCode = error.statusCode || 500;
     let message = 'Failed to scrape and analyze tweets. Please try again later.';
     
-    if (error.response) {
+    if (error instanceof PolarAPIError) {
+        message = error.data?.detail || error.message || 'Polar API error during scrape verification.';
+    } else if (error.response) { // Axios error
       if (error.response.status === 429) {
-        statusCode = 429;
-        message = 'Service rate limit exceeded. Please try again shortly.';
+        statusCode = 429; message = 'External service rate limit exceeded. Please try again shortly.';
       } else if ([401, 403].includes(error.response.status)) {
-        statusCode = 503;
-        message = 'External service authentication failed. Please contact support.';
+        statusCode = 503; message = 'External service authentication failed. Please contact support.';
+      } else {
+        message = error.response.data?.message || message;
       }
     } else if (error.message.includes('timed out')) {
-      statusCode = 504;
-      message = 'Request timed out. Please try again later.';
+      statusCode = 504; message = 'Request timed out. Please try again later.';
     }
     
     res.status(statusCode).json({ 
       status: 'error', 
       message, 
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+      errorDetails: process.env.NODE_ENV === 'development' ? { name: error.name, message: error.message, data: error.data } : undefined 
     });
   }
 });

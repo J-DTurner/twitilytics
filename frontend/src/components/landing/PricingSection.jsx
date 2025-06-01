@@ -155,7 +155,7 @@ const PricingSection = () => {
             
             <HashLink 
               to="#file-upload"
-              state={{ preselect: 'username' }}
+              state={{ preselect: 'username', numBlocks: 1 }}
               className="btn btn-primary btn-md btn-full"
             >
               Analyze by Username

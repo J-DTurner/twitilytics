@@ -26,9 +26,8 @@ const FileUploadSection = () => {
   const [reminderError, setReminderError] = useState(null);
   const [uploadType, setUploadType] = useState('file'); // Default to 'file'
   const [twitterHandle, setTwitterHandle] = useState('');
-  // For simplicity, let's assume the scrape package is fixed, e.g., 5 blocks (5000 tweets)
-  const SCRAPE_PACKAGE_BLOCKS = 5; // Example: This package is for 5000 tweets
-  const SCRAPE_PACKAGE_COST = 10.00; // Example: Cost for this 5k tweet package
+  const [numBlocksForScrape, setNumBlocksForScrape] = useState(1); // Default to 1 block (1000 tweets)
+  const scrapeBlockOptions = [1, 2, 3, 4, 5, 10, 20, 50, 100]; // Example: 1k to 100k tweets
   
   // Setup file processor hook
   const {
@@ -50,18 +49,20 @@ const FileUploadSection = () => {
     isPaidUser: false
   });
   
-  // Add useEffect to handle pre-selection from location state
   useEffect(() => {
     const preselectMethod = location.state?.preselect;
+    const preselectNumBlocks = location.state?.numBlocks;
+
     if (preselectMethod) {
-      if (preselectMethod === 'file' || preselectMethod === 'username') {
-        // Always set the uploadType if a preselect is provided via navigation state
-        // This ensures that clicking a new pricing card link will update the selection
-        setUploadType(preselectMethod);
+      setUploadType(preselectMethod);
+      if (preselectMethod === 'username' && preselectNumBlocks && scrapeBlockOptions.includes(parseInt(preselectNumBlocks,10))) {
+        setNumBlocksForScrape(parseInt(preselectNumBlocks, 10));
+      } else if (preselectMethod === 'username') {
+        // If numBlocks not provided or invalid, reset to default or a sensible value
+        setNumBlocksForScrape(1); // Default to 1 if specific package not passed
       }
     }
-    // If no preselectMethod, uploadType remains 'file' due to useState initialization
-  }, [location.state]); // Only depend on location.state to re-trigger when it changes
+  }, [location.state]);
   
   // Handle file input change
   const handleFileInputChange = (event) => {
@@ -180,10 +181,19 @@ const FileUploadSection = () => {
     setShowEmailForm(!showEmailForm);
   };
 
-  // Handle scrape and pay
+  const handleNumBlocksChange = (event) => {
+    setNumBlocksForScrape(parseInt(event.target.value, 10));
+  };
+
   const handleScrapeAndPay = () => {
-    updateDataSource('username', { handle: twitterHandle, blocks: SCRAPE_PACKAGE_BLOCKS });
-    handleScrapePayment({ email, twitterHandle, numBlocks: SCRAPE_PACKAGE_BLOCKS });
+    if (!twitterHandle.trim() || !email.trim()) {
+      alert("Please enter a Twitter Username and your email address.");
+      return;
+    }
+    updateDataSource('username', { handle: twitterHandle, blocks: numBlocksForScrape });
+    // The cost is now dynamic based on numBlocksForScrape, backend needs to handle this.
+    // For now, the frontend will pass numBlocks. Backend payment creation needs to map this to a Polar Price ID.
+    handleScrapePayment({ email, twitterHandle, numBlocks: numBlocksForScrape });
   };
   
   return (
@@ -488,9 +498,22 @@ const FileUploadSection = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label>Scrape Package:</label>
-                  <p className="text-lg font-semibold">Standard Scrape ({(SCRAPE_PACKAGE_BLOCKS * 1000).toLocaleString()} tweets)</p>
-                  <p className="text-sm text-gray-400">This package analyzes up to {(SCRAPE_PACKAGE_BLOCKS * 1000).toLocaleString()} recent tweets from the profile.</p>
+                  <label htmlFor="num-blocks-scrape">Number of Tweets (in thousands):</label>
+                  <select
+                    id="num-blocks-scrape"
+                    value={numBlocksForScrape}
+                    onChange={handleNumBlocksChange}
+                    className="timeframe-select" 
+                  >
+                    {scrapeBlockOptions.map(blocks => (
+                      <option key={blocks} value={blocks}>
+                        {`${(blocks * 1000).toLocaleString()} tweets ($${(blocks * 2).toFixed(2)})`}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-gray-400" style={{color: 'var(--light)', marginTop: 'var(--space-xs)'}}>
+                    Select how many recent tweets to analyze. Cost is $2.00 per 1,000 tweets.
+                  </p>
                 </div>
                 
                 <div className="form-group">
@@ -509,9 +532,9 @@ const FileUploadSection = () => {
                   type="button"
                   className="btn btn-accent btn-lg mt-4"
                   onClick={handleScrapeAndPay}
-                  disabled={isProcessingPayment || !twitterHandle || !email}
+                  disabled={isProcessingPayment || !twitterHandle.trim() || !email.trim() || numBlocksForScrape < 1}
                 >
-                  {isProcessingPayment ? 'Processing...' : `Unlock Profile Report – $${SCRAPE_PACKAGE_COST.toFixed(2)}`}
+                  {isProcessingPayment ? 'Processing...' : `Unlock Profile Report – $${(numBlocksForScrape * 2).toFixed(2)}`}
                 </button>
                 
                 <p className="payment-note mt-2">

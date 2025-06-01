@@ -34,16 +34,26 @@ const validateCheckout = [
 router.post('/create-checkout', validateCheckout, async (req, res) => {
   try {
     const { email, metadata = {} } = req.body;
-    const customerExternalIdFromRequest = req.body.customer_external_id;
+    // Frontend should send its internal dataSessionId (from file upload) as customer_external_id for linking
+    const customerExternalIdFromRequest = req.body.customer_external_id; // This IS the dataSessionId for file uploads
     const polarEnv = resolvePolarEnv(req);
     const polarClient = getPolarClient(polarEnv);
     const priceId = polarClient.config.priceIds.premiumAnalysis;
 
-    logger.info('Creating Polar checkout session for Premium Analysis', { email: email || 'anonymous', polarEnv, priceId });
+    logger.info('Creating Polar checkout session for Premium Analysis (File Upload)', { 
+        email: email || 'anonymous', 
+        polarEnv, 
+        priceId,
+        dataSessionId: customerExternalIdFromRequest 
+    });
 
     if (!priceId) {
       logger.error('Premium Analysis Price ID not configured for env:', polarEnv);
       return res.status(500).json({ status: 'error', message: 'Payment service is not configured correctly (premium).' });
+    }
+    if (!customerExternalIdFromRequest) {
+        logger.error('dataSessionId (as customer_external_id) is required for file upload checkout.');
+        return res.status(400).json({ status: 'error', message: 'Analysis session identifier is missing.' });
     }
 
     const frontendBaseUrl = process.env.FRONTEND_URL;
@@ -55,7 +65,8 @@ router.post('/create-checkout', validateCheckout, async (req, res) => {
       });
     }
 
-    const successUrl = `${frontendBaseUrl}/report?session_id={CHECKOUT_SESSION_ID}&source=polar`;
+    // For file uploads, pass dataSessionId in success_url to help frontend link if needed, though metadata is primary
+    const successUrl = `${frontendBaseUrl}/payment/verify?session_id={CHECKOUT_SESSION_ID}&source=polar&type=file&data_session_id=${customerExternalIdFromRequest}`;
     const cancelUrl = `${frontendBaseUrl}/?payment_cancelled=true`;
     
     const polarCheckoutParams = {
@@ -63,34 +74,32 @@ router.post('/create-checkout', validateCheckout, async (req, res) => {
       success_url: successUrl,
       cancel_url: cancelUrl,
       customer_email: (email && email.trim() !== '') ? email.trim() : undefined,
-      customer_external_id: customerExternalIdFromRequest || metadata.dataSessionId || undefined,
+      customer_external_id: customerExternalIdFromRequest, // Our dataSessionId
       allow_discount_codes: true,
       metadata: {
-        // Ensure dataSessionId is also in metadata for explicit tracking if customer_external_id gets used for something else by Polar internally
-        dataSessionId: metadata.dataSessionId,
-        serviceType: metadata.serviceType || 'premium_analysis_file_upload',
-        // Copy other relevant metadata passed from frontend
+        dataSessionId: customerExternalIdFromRequest, // Explicitly in metadata
+        serviceType: 'premium_analysis_file_upload',
         ...(metadata.tweetCount && { tweetCount: metadata.tweetCount.toString() }),
         ...(metadata.timeframe && { timeframe: metadata.timeframe }),
         timestamp: new Date().toISOString(),
       }
     };
 
-    logger.debug('Polar checkout params:', polarCheckoutParams);
+    logger.debug('Polar file checkout params:', polarCheckoutParams);
     const session = await polarClient.checkouts.create(polarCheckoutParams);
 
-    logger.info('Polar checkout session created', { 
-      sessionId: session.id,
-      customerExternalId: polarCheckoutParams.customer_external_id || 'anonymous'
+    logger.info('Polar file checkout session created', { 
+      checkoutSessionId: session.id, // This is Polar's checkout session ID
+      customerExternalId: polarCheckoutParams.customer_external_id 
     });
 
     res.json({
       status: 'success',
-      sessionId: session.id,
+      sessionId: session.id, // Polar's checkout session ID
       url: session.url
     });
   } catch (error) {
-    logger.error('Error creating Polar checkout session:', { message: error.message, data: error.data, stack: error.stack });
+    logger.error('Error creating Polar file checkout session:', { message: error.message, data: error.data, stack: error.stack });
     res.status(error.statusCode || 500).json({
       status: 'error',
       message: error.data?.detail || error.message || 'Failed to create checkout session',
@@ -109,11 +118,8 @@ const polarWebhookHandler = (polarEnv) => async (event, res) => {
   switch (event.type) {
     case 'order.paid': {
       const order = event.data;
-      // Try to get our analysis session identifier from common places Polar might store/forward it
-      const analysisSessionId = order.customer?.external_id || // If we set it as customer_external_id during checkout
-                                order.metadata?.dataSessionId ||    // If we stored it in metadata.dataSessionId
-                                order.metadata?.analysis_session_id || // If we used analysis_session_id in metadata
-                                order.checkout?.customer_external_id; // From the associated checkout session
+      const analysisSessionId = order.metadata?.dataSessionId; // For file uploads
+      const scrapeJobIdentifier = order.metadata?.scrapeJobId; // For scrapes
 
       const checkoutId = order.checkout_id || order.checkout?.id;
 
@@ -122,7 +128,8 @@ const polarWebhookHandler = (polarEnv) => async (event, res) => {
         checkoutId: checkoutId,
         polarCustomerId: order.customer_id, // Polar's internal customer ID
         customerEmail: order.customer?.email || order.checkout?.customer_email,
-        analysisSessionId: analysisSessionId, // This is our key identifier
+        analysisSessionId: analysisSessionId, // This is our key identifier for files
+        scrapeJobIdentifier: scrapeJobIdentifier, // This is our key identifier for scrapes
         totalAmount: order.total_amount,
         currency: order.currency,
         paidAt: order.paid_at || new Date().toISOString(), // Polar might provide paid_at
@@ -136,16 +143,15 @@ const polarWebhookHandler = (polarEnv) => async (event, res) => {
         }))
       });
 
-      if (analysisSessionId) {
+      if (analysisSessionId || scrapeJobIdentifier) {
         // In a stateful application with a database, you would:
-        // 1. Find the analysis session record using `analysisSessionId`.
+        // 1. Find the analysis session record using `analysisSessionId` or `scrapeJobIdentifier`.
         // 2. Mark this session as 'paid'.
         // 3. Store the `order.id` from Polar for reconciliation.
-        // Example: await db.collection('analysis_sessions').doc(analysisSessionId).update({ status: 'paid', polarOrderId: order.id, paidAt: new Date() });
-        logger.info(`[Polar Webhook - ${polarEnv}] Payment confirmed for analysis session: ${analysisSessionId}. Polar Order ID: ${order.id}.`);
+        logger.info(`[Polar Webhook - ${polarEnv}] Payment confirmed for session: ${analysisSessionId || scrapeJobIdentifier}. Polar Order ID: ${order.id}.`);
         // Any further backend actions like sending a confirmation email (if not handled by Polar/frontend) would go here.
       } else {
-        logger.warn(`[Polar Webhook - ${polarEnv}] Order ${order.id} paid, but could not identify a specific analysisSessionId from customer_external_id or metadata. Checkout ID: ${checkoutId}. Manual reconciliation might be needed if this session was expected to be linked.`);
+        logger.warn(`[Polar Webhook - ${polarEnv}] Order ${order.id} paid, but could not identify session from metadata. Checkout ID: ${checkoutId}. Manual reconciliation might be needed.`);
       }
       break;
     }
@@ -196,49 +202,120 @@ router.post('/webhook/polar-sbx',
   })
 );
 
-/**
- * @route GET /api/payment/status/:sessionId
- * @desc Check payment status for a Polar checkout session
- */
-router.get('/status/:sessionId', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-    const polarEnv = resolvePolarEnv(req); // Or determine from session ID prefix if Polar does that
-    const polarClient = getPolarClient(polarEnv);
-    
-    if (!sessionId) {
+const validateScrapeCheckout = [
+  body('email').optional({ checkFalsy: true }).isEmail().withMessage('Valid email is required'),
+  body('numBlocks').isInt({ min: 1, max: 100 }).withMessage('Number of blocks must be an integer between 1 and 100'),
+  body('twitterHandle').isString().notEmpty().withMessage('Twitter handle is required'),
+  // customer_external_id is now generated by backend for scrapes
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
       return res.status(400).json({ 
         status: 'error', 
-        message: 'Session ID is required' 
+        errors: errors.array() 
       });
     }
+    next();
+  }
+];
+
+router.post('/create-scrape-checkout', validateScrapeCheckout, async (req, res) => {
+  try {
+    const { email, twitterHandle, numBlocks } = req.body; 
+    const polarEnv = resolvePolarEnv(req);
+    const polarClient = getPolarClient(polarEnv);
     
-    logger.info('Checking Polar payment status', { sessionId, polarEnv });
+    // Determine Price ID based on numBlocks
+    const priceIdKey = `scrape_${numBlocks}blocks`;
+    let priceId = polarClient.config.priceIds[priceIdKey];
+
+    if (!priceId) {
+      logger.error(`Polar Price ID for scraping ${numBlocks} blocks not configured for env: ${polarEnv}. Key: ${priceIdKey}`);
+      return res.status(500).json({ status: 'error', message: `Scraping service for ${numBlocks*1000} tweets is unavailable (config error).` });
+    }
     
-    // Retrieve session from Polar
-    const session = await polarClient.checkouts.get(sessionId);
+    const uniqueScrapeJobId = `scrape_${twitterHandle}_${numBlocks}_${Date.now()}`;
+
+    logger.info('Creating Polar scrape checkout session', { email, twitterHandle, numBlocks, polarEnv, priceId, scrapeJobId: uniqueScrapeJobId });
+
+    const frontendBaseUrl = process.env.FRONTEND_URL;
+    if (!frontendBaseUrl) {
+      logger.error('CRITICAL: FRONTEND_URL environment variable is not set for scrape checkout!');
+      return res.status(500).json({ 
+        status: 'error', 
+        message: 'Scraping service payment is misconfigured (URL). Please contact support.' 
+      });
+    }
+
+    // Pass scrapeJobId and other details in success_url for frontend context if needed, though metadata is primary
+    const successUrl = `${frontendBaseUrl}/payment/verify?session_id={CHECKOUT_SESSION_ID}&source=polar&type=scrape&handle=${encodeURIComponent(twitterHandle)}&blocks=${numBlocks}&customer_external_id=${uniqueScrapeJobId}`;
+    const cancelUrl = `${frontendBaseUrl}/?payment_cancelled=true`;
+
+    const polarCheckoutParams = {
+      product_price_id: priceId,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      customer_email: (email && email.trim() !== '') ? email.trim() : undefined,
+      customer_external_id: uniqueScrapeJobId, 
+      allow_discount_codes: true,
+      metadata: { 
+        serviceType: 'scrape_analysis', 
+        twitterHandle, 
+        numBlocks: Number(numBlocks), // Ensure it's a number
+        scrapeJobId: uniqueScrapeJobId, // Store our unique ID
+        timestamp: new Date().toISOString() 
+      }
+    };
     
-    // Return payment status
+    logger.debug('Polar scrape checkout params:', polarCheckoutParams);
+    const session = await polarClient.checkouts.create(polarCheckoutParams);
+    
+    logger.info('Polar scrape checkout session created', { 
+        checkoutSessionId: session.id, // Polar's checkout session ID
+        scrapeJobId: uniqueScrapeJobId 
+    });
+    res.json({ 
+        status: 'success', 
+        sessionId: session.id, // Polar's checkout session ID
+        url: session.url 
+    });
+
+  } catch (error) {
+    logger.error('Error creating Polar scrape checkout session:', { message: error.message, data: error.data, stack: error.stack });
+    res.status(error.statusCode || 500).json({ 
+        status: 'error', 
+        message: error.data?.detail || error.message || 'Failed to create scrape checkout session' 
+    });
+  }
+});
+
+
+router.get('/status/:sessionId', async (req, res) => {
+  try {
+    const { sessionId: polarCheckoutSessionId } = req.params; // This is Polar's checkout session ID
+    const polarEnv = resolvePolarEnv(req);
+    const polarClient = getPolarClient(polarEnv);
+    
+    if (!polarCheckoutSessionId) {
+      return res.status(400).json({ status: 'error', message: 'Polar Session ID is required' });
+    }
+    
+    logger.info('Checking Polar payment status', { polarCheckoutSessionId, polarEnv });
+    
+    const polarSession = await polarClient.checkouts.get(polarCheckoutSessionId);
+    
     res.json({
       status: 'success',
-      paid: session.status === 'succeeded',
-      paymentStatus: session.status,
-      customer: session.customer_email ? { // Polar provides customer_email directly on checkout
-        email: session.customer_email,
-        // name: session.customer_details.name, // Polar structure might differ
-      } : null,
-      metadata: session.metadata // Pass back metadata
+      paid: polarSession.status === 'succeeded',
+      paymentStatus: polarSession.status,
+      customerEmail: polarSession.customer_email, // Polar provides customer_email directly
+      metadata: polarSession.metadata // Return all metadata from Polar
     });
   } catch (error) {
     logger.error('Error checking Polar payment status:', { message: error.message, data: error.data, stack: error.stack });
-    
     if (error instanceof PolarAPIError && error.statusCode === 404) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Session not found'
-      });
+      return res.status(404).json({ status: 'error', message: 'Polar checkout session not found' });
     }
-    
     res.status(error.statusCode || 500).json({
       status: 'error',
       message: error.data?.detail || error.message || 'Failed to check payment status',
@@ -307,92 +384,6 @@ router.post('/validate-payment', [
       status: 'error',
       message: error.data?.detail || error.message || 'Failed to validate payment',
       error: process.env.NODE_ENV === 'development' ? { message: error.message, data: error.data } : undefined
-    });
-  }
-});
-
-/**
- * Validation for scrape checkout
- */
-const validateScrapeCheckout = [
-  body('email').optional().isEmail().withMessage('Valid email is required'),
-  // numBlocks is now implicitly part of the scrape package defined by the Polar Price ID
-  // body('numBlocks').isInt({ min: 1, max: 100 }).withMessage('Number of blocks must be an integer between 1 and 100'),
-  body('twitterHandle').isString().notEmpty().withMessage('Twitter handle is required'),
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        status: 'error', 
-        errors: errors.array() 
-      });
-    }
-    next();
-  }
-];
-
-/**
- * @route POST /api/payment/create-scrape-checkout
- * @desc Create a Polar checkout session for a predefined scraping service package
- */
-router.post('/create-scrape-checkout', validateScrapeCheckout, async (req, res) => {
-  try {
-    const { email, twitterHandle } = req.body; // numBlocks is removed from direct params
-    const polarEnv = resolvePolarEnv(req);
-    const polarClient = getPolarClient(polarEnv);
-    const priceId = polarClient.config.priceIds.scrapePackage;
-    
-    // The specific number of blocks/tweets this package offers should be known by the system,
-    // e.g., from the product configuration or an internal mapping.
-    // For simplicity, let's say this package is for 5000 tweets.
-    const packageTweetLimit = 5000; // This should ideally come from config
-    const numBlocksImpliedByPackage = Math.ceil(packageTweetLimit / 1000);
-
-    if (!priceId) {
-      logger.error('Polar Price ID for scraping package is not configured for env:', polarEnv);
-      return res.status(500).json({ status: 'error', message: 'Scraping service is unavailable (config).' });
-    }
-    
-    logger.info('Creating Polar scrape checkout session', { email, twitterHandle, polarEnv, priceId });
-
-    const frontendBaseUrl = process.env.FRONTEND_URL;
-    if (!frontendBaseUrl) {
-      logger.error('CRITICAL: FRONTEND_URL environment variable is not set for scrape checkout!');
-      return res.status(500).json({ 
-        status: 'error', 
-        message: 'Scraping service payment is misconfigured (URL). Please contact support.' 
-      });
-    }
-
-    const successUrl = `${frontendBaseUrl}/report?session_id={CHECKOUT_SESSION_ID}&type=scrape&handle=${encodeURIComponent(twitterHandle)}&blocks=${numBlocksImpliedByPackage}&source=polar`;
-    const cancelUrl = `${frontendBaseUrl}/?payment_cancelled=true`;
-
-    const polarCheckoutParams = {
-      product_price_id: priceId,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      customer_email: email || undefined,
-      customer_external_id: `scrape_${twitterHandle}_${Date.now()}`, // Unique ID for this scrape job
-      allow_discount_codes: true,
-      metadata: { 
-        analysisType: 'scrape', 
-        twitterHandle, 
-        numBlocks: numBlocksImpliedByPackage, // Store what the package offers
-        timestamp: new Date().toISOString() 
-      }
-    };
-    
-    logger.debug('Polar scrape checkout params:', polarCheckoutParams);
-    const session = await polarClient.checkouts.create(polarCheckoutParams);
-    
-    logger.info('Polar scrape checkout session created', { sessionId: session.id });
-    res.json({ status: 'success', sessionId: session.id, url: session.url });
-
-  } catch (error) {
-    logger.error('Error creating Polar scrape checkout session:', { message: error.message, data: error.data, stack: error.stack });
-    res.status(error.statusCode || 500).json({ 
-        status: 'error', 
-        message: error.data?.detail || error.message || 'Failed to create scrape checkout session' 
     });
   }
 });
