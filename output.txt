@@ -1,36 +1,32 @@
-Task completed successfully. Modified the /scrape-and-analyze route in backend/routes/analysis.js to implement critical backend security changes that verify the paymentSessionId and use parameters from Polar's metadata instead of blindly trusting client input.
+Task completed successfully. Enhanced PaymentVerification.jsx with comprehensive logging to detect if the literal placeholder {CHECKOUT_SESSION_ID} is being received from Polar's redirect.
 
 Changes made:
-1. Added Polar client imports:
-   - getPolarClient from '../utils/polar/clientCache'
-   - resolvePolarEnv from '../utils/polar/resolvePolarEnv'
-   - PolarAPIError from '../utils/polar/errors'
+1. Added console.group logging block at the beginning of useEffect to capture all URL parameters:
+   - Raw polarCheckoutSessionId from URL
+   - Source Type from URL  
+   - Analysis Type from URL
+   - Analysis Session ID (data_session_id) from URL
+   - Customer External ID (customer_external_id) from URL
+   - All Search Params Object (complete overview)
 
-2. Modified request validation:
-   - paymentSessionId is now required (Polar's checkout session ID)
-   - numBlocks is now optional for context only, will be overridden by verified metadata
-   - Updated variable names for clarity (requestedHandle, requestedNumBlocks)
+2. Added explicit check for literal placeholder string:
+   - Detects if polarCheckoutSessionId === '{CHECKOUT_SESSION_ID}'
+   - Logs critical error to console when placeholder is detected
+   - Sets informative error message explaining the issue and advising user to contact support
+   - Stops verification process early to prevent further errors
 
-3. Implemented payment verification before scraping:
-   - Uses paymentSessionId to fetch checkout session details from Polar
-   - Checks if polarSession.status === 'succeeded' 
-   - Extracts verifiedTwitterHandle, verifiedNumBlocks, and verifiedScrapeJobId from metadata
-   - Validates all required parameters are present and valid
-   - Compares requested handle with verified handle for security
+3. Enhanced verification flow logging:
+   - Logs backend verification result
+   - Logs metadata from Polar on successful payment
+   - Logs determined serviceType
+   - Logs scrape analysis details (handle, blocks, scrapeJobID)
+   - Logs file analysis details (dataSessionID)
+   - Enhanced error logging with searchParams context
+   - Logs localStorage cleanup actions
 
-4. Updated scraping logic to use verified parameters:
-   - Uses verifiedTwitterHandle and verifiedNumBlocks for Apify searchTerms and maxItems
-   - Adds verified parameters to processed data for context
-   - Enhanced logging with verified parameters
+4. Improved error display:
+   - Added prominent error message display in JSX
+   - Enhanced error states with detailed user-facing messages
+   - Includes Polar Session ID in error messages for support
 
-5. Enhanced error handling:
-   - Added specific handling for PolarAPIError (404 for session not found)
-   - Improved error messages with specific payment status information
-   - Added comprehensive logging for verification outcomes
-
-6. Security improvements:
-   - Prevents tampering by validating all scrape parameters come from verified Polar metadata
-   - Logs mismatches between requested and verified parameters
-   - Ensures only successful payments can trigger scraping
-
-The route now securely verifies payment status and parameters through Polar before executing any scraping operations, preventing unauthorized or manipulated scrape requests.
+The enhanced logging will clearly identify whether the frontend is receiving the literal placeholder from Polar's redirect and provide comprehensive debugging information for the payment verification flow.

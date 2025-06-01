@@ -112,29 +112,35 @@ router.post('/create-checkout', validateCheckout, async (req, res) => {
 const polarWebhookHandler = (polarEnv) => async (event, res) => {
   // The Webhooks middleware from @polar-sh/express handles signature verification
   // and parsing req.body to event.
-  logger.info(`[Polar Webhook - ${polarEnv}] Received event type: ${event.type}`, { eventId: event.id });
+  
+  // ADD THIS LOG: Log the entire event object
+  logger.info(`[Polar Webhook - ${polarEnv}] Received full event payload`, { 
+    eventId: event.id, 
+    eventType: event.type,
+    fullEvent: JSON.parse(JSON.stringify(event)) // Deep clone to ensure full object is logged
+  });
+  // END OF ADDED LOG
 
   // Handle the event based on its type
   switch (event.type) {
     case 'order.paid': {
       const order = event.data;
-      const analysisSessionId = order.metadata?.dataSessionId; // For file uploads
-      const scrapeJobIdentifier = order.metadata?.scrapeJobId; // For scrapes
-
+      // Add checkout_id to log if available directly on order, or from order.checkout
       const checkoutId = order.checkout_id || order.checkout?.id;
 
       logger.info(`[Polar Webhook - ${polarEnv}] Order paid successfully.`, {
         orderId: order.id,
-        checkoutId: checkoutId,
-        polarCustomerId: order.customer_id, // Polar's internal customer ID
+        checkoutId: checkoutId, // Log this
+        polarCustomerId: order.customer_id, 
         customerEmail: order.customer?.email || order.checkout?.customer_email,
-        analysisSessionId: analysisSessionId, // This is our key identifier for files
-        scrapeJobIdentifier: scrapeJobIdentifier, // This is our key identifier for scrapes
+        // analysisSessionId is our internal ID for file uploads (customer_external_id)
+        analysisSessionId: order.metadata?.dataSessionId || order.customer_external_id,
+        // scrapeJobIdentifier is our internal ID for scrapes (customer_external_id)
+        scrapeJobIdentifier: order.metadata?.scrapeJobId || order.customer_external_id,
         totalAmount: order.total_amount,
         currency: order.currency,
-        paidAt: order.paid_at || new Date().toISOString(), // Polar might provide paid_at
-        metadataFromOrder: order.metadata, // Log all metadata received with the order
-        // Log line items to understand what was purchased
+        paidAt: order.paid_at || new Date().toISOString(), 
+        metadataFromOrder: order.metadata, 
         items: order.items?.map(item => ({ 
             product_id: item.product_id, 
             product_price_id: item.product_price_id, 
@@ -143,27 +149,49 @@ const polarWebhookHandler = (polarEnv) => async (event, res) => {
         }))
       });
 
-      if (analysisSessionId || scrapeJobIdentifier) {
-        // In a stateful application with a database, you would:
-        // 1. Find the analysis session record using `analysisSessionId` or `scrapeJobIdentifier`.
-        // 2. Mark this session as 'paid'.
-        // 3. Store the `order.id` from Polar for reconciliation.
-        logger.info(`[Polar Webhook - ${polarEnv}] Payment confirmed for session: ${analysisSessionId || scrapeJobIdentifier}. Polar Order ID: ${order.id}.`);
-        // Any further backend actions like sending a confirmation email (if not handled by Polar/frontend) would go here.
+      // Improved logic for identifying the session/job
+      const analysisSessionIdFromMeta = order.metadata?.dataSessionId;
+      const scrapeJobIdentifierFromMeta = order.metadata?.scrapeJobId;
+      const customerExternalId = order.customer_external_id; // This is the key from Polar
+      let identifiedSessionOrJobId = null;
+
+      if (scrapeJobIdentifierFromMeta) {
+          identifiedSessionOrJobId = scrapeJobIdentifierFromMeta;
+          logger.info(`[Polar Webhook - ${polarEnv}] Identified via scrapeJobId in metadata: ${identifiedSessionOrJobId}`);
+      } else if (analysisSessionIdFromMeta) {
+          identifiedSessionOrJobId = analysisSessionIdFromMeta;
+          logger.info(`[Polar Webhook - ${polarEnv}] Identified via dataSessionId in metadata: ${identifiedSessionOrJobId}`);
+      } else if (customerExternalId) {
+          // Fallback to customer_external_id if specific metadata keys are missing
+          // This requires consistent use of customer_external_id for either dataSessionId or scrapeJobId
+          identifiedSessionOrJobId = customerExternalId;
+          logger.info(`[Polar Webhook - ${polarEnv}] Identified via customer_external_id: ${identifiedSessionOrJobId}. Assuming this is the intended session/job ID.`);
+      }
+
+
+      if (identifiedSessionOrJobId) {
+        logger.info(`[Polar Webhook - ${polarEnv}] Payment confirmed for session/job: ${identifiedSessionOrJobId}. Polar Order ID: ${order.id}.`);
       } else {
-        logger.warn(`[Polar Webhook - ${polarEnv}] Order ${order.id} paid, but could not identify session from metadata. Checkout ID: ${checkoutId}. Manual reconciliation might be needed.`);
+        logger.warn(`[Polar Webhook - ${polarEnv}] Order ${order.id} paid, but could not identify session/job from metadata or customer_external_id. Checkout ID: ${checkoutId}. Manual reconciliation might be needed.`, {
+            metadata: order.metadata,
+            customerExternalId: order.customer_external_id
+        });
       }
       break;
     }
     
     case 'order.refunded': {
       const order = event.data;
-      logger.info(`[Polar Webhook - ${polarEnv}] Order refunded`, { orderId: order.id, customerExternalId: order.customer_external_id });
+      logger.info(`[Polar Webhook - ${polarEnv}] Order refunded`, { 
+          orderId: order.id, 
+          customerExternalId: order.customer_external_id,
+          metadata: order.metadata // Log metadata for refunds too
+      });
       // Handle refund logic, e.g., revoke premium access
       break;
     }
     default:
-      logger.debug(`[Polar Webhook - ${polarEnv}] Unhandled event type: ${event.type}`);
+      logger.debug(`[Polar Webhook - ${polarEnv}] Unhandled event type: ${event.type}`, { eventId: event.id });
   }
   // Send a 200 response to acknowledge receipt of the event
   // The @polar-sh/express middleware handles sending the response.
@@ -181,8 +209,14 @@ router.post('/webhook/polar',
     webhookSecret: makePolarConfig('production').webhookSecret,
     onOrderPaid: polarWebhookHandler('production'),
     onOrderRefunded: polarWebhookHandler('production'), // Add other handlers as needed
-    onPayload: (event) => { // Generic handler for logging or unhandled types
-      logger.debug(`[Polar Webhook - production] Generic payload type: ${event.type}`);
+    onPayload: (event) => { 
+      // MODIFY THIS LOG: Log the entire event object for generic payloads
+      logger.debug(`[Polar Webhook - production] Generic payload received`, { 
+        eventType: event.type,
+        eventId: event.id,
+        fullEvent: JSON.parse(JSON.stringify(event)) // Deep clone
+      });
+      // END OF MODIFIED LOG
     }
   })
 );
@@ -197,7 +231,13 @@ router.post('/webhook/polar-sbx',
     onOrderPaid: polarWebhookHandler('sandbox'),
     onOrderRefunded: polarWebhookHandler('sandbox'),
     onPayload: (event) => {
-      logger.debug(`[Polar Webhook - sandbox] Generic payload type: ${event.type}`);
+      // MODIFY THIS LOG: Log the entire event object for generic payloads
+      logger.debug(`[Polar Webhook - sandbox] Generic payload received`, { 
+        eventType: event.type,
+        eventId: event.id,
+        fullEvent: JSON.parse(JSON.stringify(event)) // Deep clone
+      });
+      // END OF MODIFIED LOG
     }
   })
 );
@@ -296,11 +336,25 @@ router.get('/status/:sessionId', async (req, res) => {
     const polarEnv = resolvePolarEnv(req);
     const polarClient = getPolarClient(polarEnv);
     
-    if (!polarCheckoutSessionId) {
-      return res.status(400).json({ status: 'error', message: 'Polar Session ID is required' });
+    // ADD THIS LOG:
+    logger.info(`[Polar Status Check] Received request for session ID: '${polarCheckoutSessionId}'`, { 
+      rawParam: req.params.sessionId, // Log the raw parameter as well
+      polarEnv 
+    });
+    // END OF ADDED LOG
+
+    if (!polarCheckoutSessionId || polarCheckoutSessionId === '{CHECKOUT_SESSION_ID}') { 
+      logger.warn('[Polar Status Check] Invalid Polar Session ID received', { 
+          polarCheckoutSessionId,
+          message: "Session ID was either missing or the literal placeholder string."
+      });
+      return res.status(400).json({ 
+        status: 'error', 
+        message: 'Valid Polar Session ID is required. Received placeholder or invalid ID.' 
+      });
     }
     
-    logger.info('Checking Polar payment status', { polarCheckoutSessionId, polarEnv });
+    logger.info('Checking Polar payment status with Polar API', { polarCheckoutSessionId, polarEnv });
     
     const polarSession = await polarClient.checkouts.get(polarCheckoutSessionId);
     
@@ -312,9 +366,18 @@ router.get('/status/:sessionId', async (req, res) => {
       metadata: polarSession.metadata // Return all metadata from Polar
     });
   } catch (error) {
-    logger.error('Error checking Polar payment status:', { message: error.message, data: error.data, stack: error.stack });
+    logger.error('Error checking Polar payment status:', { 
+        polarCheckoutSessionIdAttempted: req.params.sessionId, // Log the ID that caused the error
+        message: error.message, 
+        data: error.data, 
+        stack: error.stack 
+    });
     if (error instanceof PolarAPIError && error.statusCode === 404) {
       return res.status(404).json({ status: 'error', message: 'Polar checkout session not found' });
+    }
+    // Log the specific error data from Polar if it's a PolarAPIError and not a 404
+    if (error instanceof PolarAPIError) {
+        logger.error('[Polar Status Check] Polar API Error details', { polarErrorData: error.data, statusCode: error.statusCode });
     }
     res.status(error.statusCode || 500).json({
       status: 'error',
