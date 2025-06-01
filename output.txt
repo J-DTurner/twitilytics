@@ -1,14 +1,41 @@
-Task completed successfully. Modified the error message in PaymentVerification.jsx when the literal placeholder {CHECKOUT_SESSION_ID} is detected to provide more specific guidance to the user.
+Task completed successfully. Updated PaymentVerification.jsx to handle the {CHECKOUT_SESSION_ID} placeholder by polling the new internal status endpoint.
 
-The error message was updated from:
-"Received a placeholder session ID. Payment verification cannot proceed. This often indicates an issue with the payment provider redirect setup or that the redirect happened before the placeholder was replaced. Please contact support if your payment was successful."
+Major changes made:
 
-To:
-"Error: Invalid session identifier from payment provider. We received a placeholder value ('{CHECKOUT_SESSION_ID}') instead of an actual payment session ID. This can happen due to a temporary issue with the payment provider's redirect or if the redirect occurred too quickly. If your payment was successful, please contact support and provide them with this full URL: ${window.location.href}"
+1. Added imports and constants:
+   - Added useRef import for poll count tracking
+   - Added verifyPaymentByInternalId import from paymentService
+   - Added POLLING_INTERVAL (3 seconds) and MAX_POLLS (20 attempts = 1 minute) constants
 
-The enhanced error message now includes:
-1. Clear explanation of the issue (placeholder value received instead of actual session ID)
-2. Potential causes (temporary issue with payment provider redirect or redirect occurred too quickly)
-3. Instructions for user to contact support with the full URL containing all parameters
+2. Created processSuccessfulPayment helper function:
+   - Extracted payment success logic to be reusable by both verification paths
+   - Takes result and polarCheckoutId parameters
+   - Handles both scrape and file upload data source updates
+   - Clears localStorage and navigates to report
 
-This enhanced error message will help users understand the issue and provide support teams with the necessary debugging information including the full URL with the unreplaced placeholder and other parameters.
+3. Added attemptVerification function:
+   - Encapsulates normal Polar session ID verification flow
+   - Uses existing verifyPaymentStatus service
+   - Calls processSuccessfulPayment on success
+
+4. Added pollInternalStatus function:
+   - Implements polling mechanism for internal session ID verification
+   - Sets appropriate status message for user feedback
+   - Uses setInterval to poll every 3 seconds up to 20 times
+   - Handles timeout, success, and failure scenarios
+   - Logs each polling attempt for debugging
+   - Stops polling on non-pending payment status
+
+5. Updated main useEffect logic:
+   - Extracts internalAnalysisSessionId from URL parameters
+   - Detects {CHECKOUT_SESSION_ID} placeholder
+   - Routes to pollInternalStatus when placeholder detected
+   - Falls back to normal verification for actual session IDs
+   - Enhanced error handling for missing internal IDs
+
+6. Enhanced URL parameter handling:
+   - Uses data_session_id or customer_external_id as internal session ID
+   - These parameters are reliably passed in success_url during checkout creation
+   - Provides fallback verification when Polar's session_id is problematic
+
+This implementation provides a robust fallback mechanism when Polar fails to replace the {CHECKOUT_SESSION_ID} placeholder, using webhook-confirmed payment status stored in sessionManager to verify payments via internal session identifiers.

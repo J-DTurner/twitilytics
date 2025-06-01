@@ -7,6 +7,7 @@ const { getPolarClient } = require('../utils/polar/clientCache');
 const { PolarError, PolarAPIError } = require('../utils/polar/errors');
 const { Webhooks } = require('@polar-sh/express'); // Polar's official webhook middleware
 const { makePolarConfig } = require('../utils/polar/polarConfig');
+const sessionManager = require('../utils/sessionManager'); // Add this import
 
 
 /**
@@ -149,30 +150,47 @@ const polarWebhookHandler = (polarEnv) => async (event, res) => {
         }))
       });
 
-      // Improved logic for identifying the session/job
       const analysisSessionIdFromMeta = order.metadata?.dataSessionId;
       const scrapeJobIdentifierFromMeta = order.metadata?.scrapeJobId;
-      const customerExternalId = order.customer_external_id; // This is the key from Polar
-      let identifiedSessionOrJobId = null;
+      // Polar's `customer_external_id` in the order payload is what we set during checkout creation.
+      // This field is crucial for linking.
+      const customerExternalId = order.customer_external_id; 
+      let identifiedInternalId = null;
+      let serviceType = order.metadata?.serviceType;
 
-      if (scrapeJobIdentifierFromMeta) {
-          identifiedSessionOrJobId = scrapeJobIdentifierFromMeta;
-          logger.info(`[Polar Webhook - ${polarEnv}] Identified via scrapeJobId in metadata: ${identifiedSessionOrJobId}`);
-      } else if (analysisSessionIdFromMeta) {
-          identifiedSessionOrJobId = analysisSessionIdFromMeta;
-          logger.info(`[Polar Webhook - ${polarEnv}] Identified via dataSessionId in metadata: ${identifiedSessionOrJobId}`);
+      // Prioritize specific metadata keys
+      if (serviceType === 'scrape_analysis' && scrapeJobIdentifierFromMeta) {
+          identifiedInternalId = scrapeJobIdentifierFromMeta;
+          logger.info(`[Polar Webhook - ${polarEnv}] Identified via scrapeJobId in metadata: ${identifiedInternalId}`);
+      } else if (serviceType === 'premium_analysis_file_upload' && analysisSessionIdFromMeta) {
+          identifiedInternalId = analysisSessionIdFromMeta;
+          logger.info(`[Polar Webhook - ${polarEnv}] Identified via dataSessionId in metadata: ${identifiedInternalId}`);
       } else if (customerExternalId) {
-          // Fallback to customer_external_id if specific metadata keys are missing
-          // This requires consistent use of customer_external_id for either dataSessionId or scrapeJobId
-          identifiedSessionOrJobId = customerExternalId;
-          logger.info(`[Polar Webhook - ${polarEnv}] Identified via customer_external_id: ${identifiedSessionOrJobId}. Assuming this is the intended session/job ID.`);
+          // Fallback to customer_external_id if specific metadata keys are missing OR serviceType is ambiguous
+          // This assumes customer_external_id was correctly set to either our dataSessionId or scrapeJobId
+          identifiedInternalId = customerExternalId;
+          logger.info(`[Polar Webhook - ${polarEnv}] Identified via customer_external_id: ${identifiedInternalId}. ServiceType from meta: ${serviceType}`);
+          if (!serviceType) {
+            // Attempt to infer serviceType if missing (e.g. if customer_external_id starts with 'scrape_')
+            serviceType = identifiedInternalId.startsWith('scrape_') ? 'scrape_analysis' : 'premium_analysis_file_upload';
+            logger.info(`[Polar Webhook - ${polarEnv}] Inferred serviceType based on customer_external_id format: ${serviceType}`);
+          }
       }
 
 
-      if (identifiedSessionOrJobId) {
-        logger.info(`[Polar Webhook - ${polarEnv}] Payment confirmed for session/job: ${identifiedSessionOrJobId}. Polar Order ID: ${order.id}.`);
+      if (identifiedInternalId) {
+        logger.info(`[Polar Webhook - ${polarEnv}] Payment confirmed for internal ID: ${identifiedInternalId}. Polar Order ID: ${order.id}. Polar Checkout ID: ${checkoutId}.`);
+        // Store confirmation
+        sessionManager.confirmPayment(identifiedInternalId, checkoutId, {
+          orderId: order.id,
+          amount: order.total_amount,
+          currency: order.currency,
+          customerEmail: order.customer?.email || order.checkout?.customer_email,
+          serviceType: serviceType, // Store identified or inferred service type
+          metadata: order.metadata // Store full metadata
+        });
       } else {
-        logger.warn(`[Polar Webhook - ${polarEnv}] Order ${order.id} paid, but could not identify session/job from metadata or customer_external_id. Checkout ID: ${checkoutId}. Manual reconciliation might be needed.`, {
+        logger.warn(`[Polar Webhook - ${polarEnv}] Order ${order.id} paid, but could not identify internal session/job ID from metadata or customer_external_id. Checkout ID: ${checkoutId}. Manual reconciliation might be needed.`, {
             metadata: order.metadata,
             customerExternalId: order.customer_external_id
         });
@@ -447,6 +465,55 @@ router.post('/validate-payment', [
       status: 'error',
       message: error.data?.detail || error.message || 'Failed to validate payment',
       error: process.env.NODE_ENV === 'development' ? { message: error.message, data: error.data } : undefined
+    });
+  }
+});
+
+/**
+ * @route GET /api/payment/internal-status/:internalSessionId
+ * @desc Check payment status using an internal session ID (dataSessionId or scrapeJobId)
+ *       This is used when the Polar checkout_session_id might be missing from the redirect URL.
+ */
+router.get('/internal-status/:internalSessionId', async (req, res) => {
+  try {
+    const { internalSessionId } = req.params;
+    logger.info('[PaymentRouter] Checking internal payment status for ID:', { internalSessionId });
+
+    if (!internalSessionId) {
+      return res.status(400).json({ status: 'error', message: 'Internal Session ID is required.' });
+    }
+
+    const confirmation = sessionManager.getPaymentConfirmation(internalSessionId);
+
+    if (confirmation && confirmation.status === 'paid') {
+      logger.info('[PaymentRouter] Internal payment status confirmed as paid for ID:', { internalSessionId, confirmation });
+      res.json({
+        status: 'success',
+        paid: true,
+        paymentStatus: 'succeeded', // Mimic structure of /status/:sessionId response
+        // Include relevant details from the stored confirmation
+        polarCheckoutSessionId: confirmation.polarCheckoutId,
+        customerEmail: confirmation.details?.customerEmail,
+        metadata: confirmation.details?.metadata 
+      });
+    } else {
+      logger.warn('[PaymentRouter] Internal payment status not confirmed or not paid for ID:', { internalSessionId, confirmation });
+      res.status(200).json({ // Return 200 OK, but paid: false
+        status: 'success', // API call itself was successful
+        paid: false,
+        paymentStatus: confirmation ? confirmation.status : 'pending_webhook',
+        message: 'Payment confirmation not yet received or not paid.'
+      });
+    }
+  } catch (error) {
+    logger.error('Error checking internal payment status:', { 
+      internalSessionIdAttempted: req.params.internalSessionId, 
+      message: error.message, 
+      stack: error.stack 
+    });
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to check internal payment status'
     });
   }
 });

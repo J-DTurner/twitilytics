@@ -181,3 +181,33 @@ export const validatePayment = async (data) => { // Renamed from validateSubscri
     throw error;
   }
 };
+
+/**
+ * Verify a payment status using an internal session ID (dataSessionId or scrapeJobId) via backend
+ * @param {string} internalSessionId - Our internal session ID
+ * @returns {Promise<Object>} The payment status details
+ */
+export const verifyPaymentByInternalId = async (internalSessionId) => {
+  try {
+    console.log('[PaymentService] Verifying payment by internal ID:', internalSessionId);
+    const response = await fetch(`/api/payment/internal-status/${internalSessionId}`);
+    
+    if (!response.ok) {
+      // Even if not 200, it might be a structured error from backend
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        throw new Error(`Failed to verify internal payment status. HTTP Status: ${response.status}`);
+      }
+      throw new Error(errorData.message || `Failed to verify internal payment status. HTTP Status: ${response.status}`);
+    }
+    
+    // Expected from backend: similar to verifyPaymentStatus
+    // { status: 'success', paid: boolean, paymentStatus: string, polarCheckoutSessionId?: string, customerEmail?: string, metadata?: {} }
+    return await response.json(); 
+  } catch (error) {
+    console.error('Internal payment verification error:', error);
+    throw error;
+  }
+};
