@@ -21,7 +21,6 @@ const FileUploadSection = () => {
   
   const [email, setEmail] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const [showPaymentButton, setShowPaymentButton] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [reminderError, setReminderError] = useState(null);
   const [uploadType, setUploadType] = useState('file'); // Default to 'file'
@@ -63,6 +62,15 @@ const FileUploadSection = () => {
       }
     }
   }, [location.state]);
+  
+  useEffect(() => {
+    if (isProcessed && processedData && sessionId) {
+      // Ensure context is updated with the processed data and session ID from the hook
+      updateProcessedDataAndSessionId(processedData, sessionId);
+      // Timeframe is updated via its own handler (handleTimeframeChange), 
+      // which calls updateTimeframe (context hook) already.
+    }
+  }, [isProcessed, processedData, sessionId, updateProcessedDataAndSessionId]);
   
   // Handle file input change
   const handleFileInputChange = (event) => {
@@ -138,14 +146,6 @@ const FileUploadSection = () => {
     setEmail(event.target.value);
   };
   
-  // Handle analyze button click
-  const handleAnalyzeClick = () => {
-    if (!sessionId) return;
-    // Update context with session ID and processed data
-    updateProcessedDataAndSessionId(processedData, sessionId);
-    updateTimeframe(timeframe);
-    setShowPaymentButton(true);
-  };
   
   // Handle payment button click
   const handlePaymentClick = () => {
@@ -364,26 +364,17 @@ const FileUploadSection = () => {
             </div>
           )}
           
-          {/* Analyze Button */}
-          {file && !showPaymentButton && (
-            <button
-              type="button"
-              className="btn btn-primary btn-lg"
-              onClick={handleAnalyzeClick}
-              disabled={isProcessing || !isProcessed}
-            >
-              {isProcessing ? 'Processing...' : 'Next: Review & Unlock Full Report ($9)'}
-            </button>
-          )}
-          
-          {/* Payment Button */}
-          {showPaymentButton && (
-            <div className="payment-section mt-4">
+          {/* Combined Timeframe, Email, and Payment Unlock Section for File Upload */}
+          {file && isProcessed && ( // Changed condition: show when file is processed
+            <div className="payment-section mt-4"> {/* Use existing payment-section styling or adapt */}
+              
               <h3>Ready for Your In-Depth Analysis</h3>
               <p>
-                We've processed your tweets and are ready to generate your comprehensive report.
+                We've processed your tweets. Enter your email and select a timeframe to generate your comprehensive report.
               </p>
               
+              {/* Timeframe selector is already part of .file-uploaded-state which is visible when `file` is true */}
+  
               <div className="email-input mt-4">
                 <label htmlFor="payment-email">Email (for your report):</label>
                 <input
@@ -392,14 +383,15 @@ const FileUploadSection = () => {
                   value={email}
                   onChange={handleEmailChange}
                   placeholder="your@email.com"
+                  required // Add required attribute
                 />
               </div>
               
               <button
                 type="button"
                 className="btn btn-accent btn-lg mt-4"
-                onClick={handlePaymentClick}
-                disabled={isProcessingPayment}
+                onClick={handlePaymentClick} // This calls handleStandardPayment
+                disabled={isProcessingPayment || !email.trim()} // Disable if email is empty
               >
                 {isProcessingPayment ? 'Processing...' : 'Unlock My Full AI Report – Just $9'}
               </button>
