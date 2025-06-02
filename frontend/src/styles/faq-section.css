@@ -51,9 +51,10 @@
   height: 32px;
   border-radius: var(--border-radius-full);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; /* Ensure this is present */
+  align-items: center; /* Ensure vertical centering */
+  justify-content: center; /* Ensure horizontal centering */
+  line-height: 1; /* Add this to ensure text node itself has minimal intrinsic height */
   transition: all var(--transition-fast);
   flex-shrink: 0;
   margin-left: var(--space-md);

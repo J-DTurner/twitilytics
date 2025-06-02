@@ -179,24 +179,28 @@
 }
 
 /* Icon wrapper styles used in ComparisonSection */
-.comparison-section .agency-benefit-icon, /* If the icon container uses this class */
+.comparison-section .agency-benefit-icon, 
 .comparison-section .comparison-icon-wrapper { /* Or this specific class from the JSX */
     background-color: var(--primary-lighter);
     width: 64px;
     height: 64px;
     border-radius: var(--border-radius-lg); /* Rounded square */
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; /* Ensure this is present and active */
+    align-items: center; /* Ensure vertical centering */
+    justify-content: center; /* Ensure horizontal centering */
     margin: 0 auto var(--space-lg);
     color: var(--primary); /* This color will be inherited by SVG if stroke="currentColor" */
     transition: background-color var(--transition-fast), color var(--transition-fast);
 }
+
+/* You can also ensure the SVG itself behaves well within the flex container, though usually not necessary */
 .comparison-section .agency-benefit-icon svg,
 .comparison-section .comparison-icon-wrapper svg {
     width: 32px;
     height: 32px;
     stroke: currentColor !important; /* Ensures SVG stroke color inherits from parent */
+    display: block; /* Optional: Helps ensure no extra space around SVG */
+    margin: auto; /* Optional: Further ensures centering if flex parent isn't enough */
 }
 .comparison-section .agency-benefit:hover .agency-benefit-icon,
 .comparison-section .comparison-item:hover .comparison-icon-wrapper, /* If .comparison-item is used */
