@@ -180,27 +180,30 @@
 
 /* Icon wrapper styles used in ComparisonSection */
 .comparison-section .agency-benefit-icon, 
-.comparison-section .comparison-icon-wrapper { /* Or this specific class from the JSX */
+.comparison-section .comparison-icon-wrapper {
     background-color: var(--primary-lighter);
-    width: 64px;
-    height: 64px;
-    border-radius: var(--border-radius-lg); /* Rounded square */
-    display: flex; /* Ensure this is present and active */
-    align-items: center; /* Ensure vertical centering */
-    justify-content: center; /* Ensure horizontal centering */
-    margin: 0 auto var(--space-lg);
-    color: var(--primary); /* This color will be inherited by SVG if stroke="currentColor" */
+    width: 64px;  /* Explicit width */
+    height: 64px; /* Explicit height, making it square */
+    border-radius: var(--border-radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--space-lg); /* Centers the wrapper itself horizontally within the card */
+    color: var(--primary);
     transition: background-color var(--transition-fast), color var(--transition-fast);
+    box-sizing: border-box; /* Added: ensures padding/border don't alter dimensions */
+    flex-shrink: 0; /* Added: prevents shrinking if card is flex and space is constrained */
+    overflow: hidden; /* Added: ensures SVG doesn't "bleed" if it's too large momentarily */
 }
 
-/* You can also ensure the SVG itself behaves well within the flex container, though usually not necessary */
 .comparison-section .agency-benefit-icon svg,
 .comparison-section .comparison-icon-wrapper svg {
-    width: 32px;
-    height: 32px;
-    stroke: currentColor !important; /* Ensures SVG stroke color inherits from parent */
-    display: block; /* Optional: Helps ensure no extra space around SVG */
-    margin: auto; /* Optional: Further ensures centering if flex parent isn't enough */
+    width: 32px;  /* Explicit SVG width */
+    height: 32px; /* Explicit SVG height */
+    stroke: currentColor !important; 
+    display: block; /* Ensures SVG behaves like a block element */
+    margin: auto; /* Centers the block element within the flex parent (wrapper) */
+    flex-shrink: 0; /* Prevents SVG from shrinking */
 }
 .comparison-section .agency-benefit:hover .agency-benefit-icon,
 .comparison-section .comparison-item:hover .comparison-icon-wrapper, /* If .comparison-item is used */
