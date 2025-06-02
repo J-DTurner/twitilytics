@@ -73,7 +73,12 @@ const FeaturesSection = () => {
         
         if (isVisible) {
           const visualPanelHeight = visualRef.current.getBoundingClientRect().height;
-          setListHeight(Math.min(visualPanelHeight, window.innerHeight * 0.8));
+          // Ensure visualPanelHeight is a positive number before setting
+          if (visualPanelHeight > 0) {
+            setListHeight(visualPanelHeight);
+          } else {
+            setListHeight('auto'); // Fallback if height is zero or negative
+          }
         } else {
           setListHeight('auto');
         }

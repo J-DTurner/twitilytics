@@ -39,11 +39,11 @@ const ComparisonSection = () => {
           <div className="agency-benefit"> {/* Keep agency-benefit for styling individual cards if desired, or switch to comparison-item */}
             <div className="agency-benefit-icon">
               <div className="comparison-icon-wrapper">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M4 4V20H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <rect x="7" y="14" width="3" height="6" rx="1" ry="1" stroke="currentColor" strokeWidth="2"/>
-                <rect x="12" y="10" width="3" height="10" rx="1" ry="1" stroke="currentColor" strokeWidth="2"/>
-                <rect x="17" y="6" width="3" height="14" rx="1" ry="1" stroke="currentColor" strokeWidth="2"/>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4V20H20"/>
+                <rect x="7" y="14" width="3" height="6" rx="1" ry="1"/>
+                <rect x="12" y="10" width="3" height="10" rx="1" ry="1"/>
+                <rect x="17" y="6" width="3" height="14" rx="1" ry="1"/>
               </svg>
               </div>
             </div>
@@ -55,10 +55,10 @@ const ComparisonSection = () => {
           <div className="agency-benefit">
             <div className="agency-benefit-icon">
               <div className="comparison-icon-wrapper">
-              <svg viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                <circle cx="12" cy="9" r="3" stroke="currentColor" strokeWidth="2"/>
-                <path d="M6 18C6 15 9 13 12 13C15 13 18 15 18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="9" r="3"/>
+                <path d="M6 18C6 15 9 13 12 13C15 13 18 15 18 18"/>
               </svg>
               </div>
             </div>
@@ -71,12 +71,12 @@ const ComparisonSection = () => {
           <div className="agency-benefit">
             <div className="agency-benefit-icon">
               <div className="comparison-icon-wrapper">
-              <svg viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
-                <rect x="7" y="7" width="4" height="4" fill="currentColor"/>
-                <rect x="13" y="7" width="4" height="4" fill="currentColor"/>
-                <rect x="7" y="13" width="4" height="4" fill="currentColor"/>
-                <rect x="13" y="13" width="4" height="4" fill="currentColor"/>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <rect x="7" y="7" width="4" height="4"/>
+                <rect x="13" y="7" width="4" height="4"/>
+                <rect x="7" y="13" width="4" height="4"/>
+                <rect x="13" y="13" width="4" height="4"/>
               </svg>
               </div>
             </div>
@@ -89,9 +89,9 @@ const ComparisonSection = () => {
           <div className="agency-benefit twitilytics">
             <div className="agency-benefit-icon">
               <div className="comparison-icon-wrapper">
-              <svg viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
-                <path d="M12 7V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7V12L15 15"/>
               </svg>
               </div>
             </div>
